@@ -4,10 +4,13 @@ import type { Db } from "./db";
 import { loadUser } from "./auth";
 import { authRoutes } from "./routes/auth";
 import { userRoutes } from "./routes/users";
+import { serverRoutes } from "./routes/servers";
+import { RconPool } from "./rcon";
 
 export interface AppOptions {
   secureCookies?: boolean;
   trustProxy?: boolean;
+  rconPool?: RconPool;
 }
 
 export function createApp(db: Db, opts: AppOptions = {}) {
@@ -28,6 +31,7 @@ export function createApp(db: Db, opts: AppOptions = {}) {
 
   app.use("/api/auth", authRoutes(db, { secureCookies: !!opts.secureCookies }));
   app.use("/api/users", userRoutes(db));
+  app.use("/api/servers", serverRoutes(db, opts.rconPool ?? new RconPool()));
   app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
 
   app.use(express.static(path.join(__dirname, "..", "..", "public")));

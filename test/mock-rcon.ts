@@ -1,0 +1,56 @@
+import net from "node:net";
+import type { AddressInfo } from "node:net";
+import { decodePackets, encodePacket } from "../src/rcon";
+
+export interface MockOptions {
+  password: string;
+  /** Ignore empty commands, like a server that never answers the end marker. */
+  ignoreEmpty?: boolean;
+  handler?: (cmd: string) => string;
+}
+
+/** A tiny Source RCON server for tests. Records every command it receives. */
+export async function startMockRcon(opts: MockOptions) {
+  const received: string[] = [];
+  const sockets = new Set<net.Socket>();
+  const server = net.createServer((socket) => {
+    sockets.add(socket);
+    socket.on("close", () => sockets.delete(socket));
+    let buf: Buffer = Buffer.alloc(0);
+    let authed = false;
+    socket.on("data", (data) => {
+      buf = Buffer.concat([buf, data]);
+      const { packets, rest } = decodePackets(buf);
+      buf = rest;
+      for (const p of packets) {
+        if (p.type === 3) {
+          socket.write(encodePacket(p.id, 0, ""));
+          authed = p.body === opts.password;
+          socket.write(encodePacket(authed ? p.id : -1, 2, ""));
+          continue;
+        }
+        if (!authed || p.type !== 2) continue;
+        if (p.body === "") {
+          if (!opts.ignoreEmpty) socket.write(encodePacket(p.id, 0, ""));
+          continue;
+        }
+        received.push(p.body);
+        const reply = opts.handler ? opts.handler(p.body) : `ran: ${p.body}`;
+        // Split long replies over several packets, like a real server does.
+        for (let i = 0; i < reply.length || i === 0; i += 4000) {
+          socket.write(encodePacket(p.id, 0, reply.slice(i, i + 4000)));
+        }
+      }
+    });
+  });
+  server.listen(0, "127.0.0.1");
+  await new Promise((r) => server.once("listening", r));
+  return {
+    port: (server.address() as AddressInfo).port,
+    received,
+    close: () => {
+      for (const s of sockets) s.destroy();
+      return new Promise<void>((r) => server.close(() => r()));
+    },
+  };
+}
