@@ -89,3 +89,10 @@ table.players td { padding: 6px 8px; }
 td.mono, .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
 .fail { color: var(--danger); }
 .console { height: 320px; }
+#map-select { flex: 1; min-width: 160px; }
+#map-other { flex: 1; min-width: 160px; }
+.bans-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 700px) { .bans-grid { grid-template-columns: 1fr; } }
+.bans-grid h4 { margin: 0 0 6px; color: var(--muted); font-weight: 500; font-size: 14px; }
+.bans-grid table { margin-bottom: 8px; }
+.bans-grid td { padding: 4px 8px; }

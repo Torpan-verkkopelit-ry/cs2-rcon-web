@@ -14,7 +14,49 @@ export interface ServerStatus {
   hostname?: string;
   map?: string;
   maxPlayers?: number;
+  gameType?: number;
+  gameMode?: number;
+  /** Human-readable name for gameType/gameMode, e.g. "Wingman". */
+  modeName?: string;
   players: Player[];
+}
+
+const MODE_NAMES: Record<string, string> = {
+  "0,0": "Casual",
+  "0,1": "Competitive",
+  "0,2": "Wingman",
+  "1,0": "Arms Race",
+  "1,1": "Demolition",
+  "1,2": "Deathmatch",
+  "3,0": "Custom",
+};
+
+export function modeName(gameType?: number, gameMode?: number): string | undefined {
+  if (gameType === undefined || gameMode === undefined) return undefined;
+  return MODE_NAMES[`${gameType},${gameMode}`] ?? `game_type ${gameType} / game_mode ${gameMode}`;
+}
+
+/** Reads a number from a cvar query reply such as `game_mode = 1` or `"game_mode" = "1" ( def. "0" )`. */
+export function parseCvarNumber(text: string, name: string): number | undefined {
+  const m = text.match(new RegExp(`${name}"?\\s*=\\s*"?(-?\\d+)`));
+  return m ? Number(m[1]) : undefined;
+}
+
+export interface BanEntry {
+  /** SteamID or IP address, as the server lists it. */
+  id: string;
+  /** e.g. "permanent" or "20.000 min". */
+  duration: string;
+}
+
+/** Parses the output of `listid` or `listip`. */
+export function parseBanList(text: string): BanEntry[] {
+  const entries: BanEntry[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^\s*\d+[.:)]?\s+(\S+)\s*:\s*(.+?)\s*$/);
+    if (m && !/filter list/i.test(line)) entries.push({ id: m[1], duration: m[2] });
+  }
+  return entries;
 }
 
 const num = (v: unknown): number | undefined => {

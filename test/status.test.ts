@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseStatusJson, parseStatusText } from "../src/status";
+import { modeName, parseBanList, parseCvarNumber, parseStatusJson, parseStatusText } from "../src/status";
 
 const CS2_STATUS = `Server:  Running [10.0.0.223:27015]
 Client:  Disconnected
@@ -76,4 +76,55 @@ test("parses status_json and ignores non-JSON replies", () => {
       [3, "Bot Ted", true, 0, "50:00", undefined],
     ],
   );
+});
+
+// Real output from a CS2 server (wingman and casual).
+const WINGMAN = `---------players--------
+  id     time ping loss      state   rate adr name
+   0      BOT    0    0     active      0 'Rouchard'
+65535 [NoChan]    0    0 challenging      0unknown ''
+   2    00:27    0    0     active 786432 10.0.0.101:59973 'A85'
+#end
+`;
+const CASUAL = `---------players--------
+  id     time ping loss      state   rate adr name
+   0    02:20    0    0     active 786432 10.0.0.101:59973 'A85'
+   1      BOT    0    0     active      0 'Sails'
+   2      BOT    0    0     active      0 'Kadeem'
+#end
+`;
+
+test("parses real CS2 player lists", () => {
+  assert.deepEqual(
+    parseStatusText(WINGMAN).players.map((p) => [p.id, p.name, p.bot]),
+    [
+      [0, "Rouchard", true],
+      [2, "A85", false],
+    ],
+  );
+  assert.deepEqual(
+    parseStatusText(CASUAL).players.map((p) => [p.id, p.name, p.bot, p.time]),
+    [
+      [0, "A85", false, "02:20"],
+      [1, "Sails", true, undefined],
+      [2, "Kadeem", true, undefined],
+    ],
+  );
+});
+
+test("reads game mode cvars", () => {
+  assert.equal(parseCvarNumber("game_mode = 1", "game_mode"), 1);
+  assert.equal(parseCvarNumber('"game_type" = "0" ( def. "0" ) game replicated', "game_type"), 0);
+  assert.equal(parseCvarNumber("Unknown command", "game_type"), undefined);
+  assert.equal(modeName(0, 2), "Wingman");
+  assert.equal(modeName(5, 9), "game_type 5 / game_mode 9");
+});
+
+test("parses ban lists", () => {
+  assert.deepEqual(parseBanList("ID filter list: 2 entries\n1 STEAM_1:0:123 : permanent\n2 [U:1:999] : 30.000 min\n"), [
+    { id: "STEAM_1:0:123", duration: "permanent" },
+    { id: "[U:1:999]", duration: "30.000 min" },
+  ]);
+  assert.deepEqual(parseBanList("IP filter list:\n1 10.0.0.5 : permanent\n"), [{ id: "10.0.0.5", duration: "permanent" }]);
+  assert.deepEqual(parseBanList("IP filter list: empty\n"), []);
 });

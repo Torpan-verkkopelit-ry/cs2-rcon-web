@@ -85,7 +85,15 @@ test("editing keeps the password when left empty; wrong password gives an error"
 test("status endpoint falls back to text status; log lists commands", async () => {
   const statusMock = await startMockRcon({
     password: "pw",
-    handler: (c) => (c === "status_json" ? "Unknown command 'status_json'!" : c === "status" ? "hostname : LAN\n    2    00:10   12    0     active 786432 10.0.0.9:27005 'Aki'\n" : ""),
+    handler: (c) =>
+      ({
+        status_json: "Unknown command 'status_json'!",
+        status: "hostname : LAN\n    2    00:10   12    0     active 786432 10.0.0.9:27005 'Aki'\n",
+        game_type: "game_type = 0",
+        game_mode: '"game_mode" = "2" ( def. "0" ) game replicated',
+        listid: "ID filter list: 1 entry\n1 [U:1:12345] : permanent\n",
+        listip: "IP filter list: empty\n",
+      })[c] ?? "",
   });
   const admin = await login("admin", "adminpass1");
   const { json } = await call("POST", "/api/servers", { name: "Status", host: "127.0.0.1", port: statusMock.port, rconPassword: "pw" }, admin);
@@ -96,7 +104,13 @@ test("status endpoint falls back to text status; log lists commands", async () =
     assert.deepEqual(r.json.players.map((p: any) => p.name), ["Aki"]);
   }
   // status_json is only tried once per server.
-  assert.deepEqual(statusMock.received, ["status_json", "status", "status"]);
+  assert.deepEqual(statusMock.received, ["status", "status_json", "game_type", "game_mode", "status", "game_type", "game_mode"]);
+
+  const st = await call("GET", `/api/servers/${json.id}/status`, undefined, admin);
+  assert.deepEqual([st.json.gameType, st.json.gameMode, st.json.modeName], [0, 2, "Wingman"]);
+
+  const bans = await call("GET", `/api/servers/${json.id}/bans`, undefined, admin);
+  assert.deepEqual(bans.json, { steamIds: [{ id: "[U:1:12345]", duration: "permanent" }], ips: [] });
 
   await call("POST", `/api/servers/${json.id}/command`, { command: "mp_warmup_end" }, admin);
   const log = await call("GET", `/api/log?serverId=${json.id}`, undefined, admin);

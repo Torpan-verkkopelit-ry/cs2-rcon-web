@@ -72,7 +72,21 @@
                 </div>
 
                 <form id="map-form" class="row controls-row">
-                  <input id="map-input" list="map-list" placeholder="Map, e.g. de_mirage (or workshop ID)" autocomplete="off" spellcheck="false">
+                  <select id="map-select" title="Map">
+                    <option value="de_ancient">de_ancient</option>
+                    <option value="de_anubis">de_anubis</option>
+                    <option value="de_dust2">de_dust2</option>
+                    <option value="de_inferno">de_inferno</option>
+                    <option value="de_mirage">de_mirage</option>
+                    <option value="de_nuke">de_nuke</option>
+                    <option value="de_overpass">de_overpass</option>
+                    <option value="de_train">de_train</option>
+                    <option value="de_vertigo">de_vertigo</option>
+                    <option value="cs_italy">cs_italy</option>
+                    <option value="cs_office">cs_office</option>
+                    <option value="__other">Other / Workshop…</option>
+                  </select>
+                  <input id="map-other" placeholder="Map name or Workshop ID" autocomplete="off" spellcheck="false" hidden>
                   <select id="mode-select" title="Game mode">
                     <option value="">Keep current mode</option>
                     <option value="0,1">Competitive</option>
@@ -83,11 +97,6 @@
                   </select>
                   <button type="submit">Change map</button>
                 </form>
-                <datalist id="map-list">
-                  <option value="de_ancient"><option value="de_anubis"><option value="de_dust2"><option value="de_inferno">
-                  <option value="de_mirage"><option value="de_nuke"><option value="de_overpass"><option value="de_train">
-                  <option value="de_vertigo"><option value="cs_italy"><option value="cs_office">
-                </datalist>
 
                 <form id="config-form" class="row controls-row">
                   <input id="config-input" list="config-list" placeholder="Config file, e.g. live.cfg" autocomplete="off" spellcheck="false">
@@ -120,6 +129,33 @@
                 </table>
                 <p class="muted small" id="players-empty" hidden>No players connected.</p>
                 <p class="error" id="players-error"></p>
+              </div>
+
+              <div class="card">
+                <div class="panel-head">
+                  <h3>Bans</h3>
+                  <span class="spacer"></span>
+                  <button class="secondary" id="bans-load">Load bans</button>
+                </div>
+                <div class="bans-grid">
+                  <div>
+                    <h4>SteamID bans</h4>
+                    <table><tbody id="ban-id-rows"></tbody></table>
+                    <form class="row unban-form" data-kind="id">
+                      <input placeholder="SteamID to unban" autocomplete="off" spellcheck="false">
+                      <button type="submit" class="secondary">Unban</button>
+                    </form>
+                  </div>
+                  <div>
+                    <h4>IP bans</h4>
+                    <table><tbody id="ban-ip-rows"></tbody></table>
+                    <form class="row unban-form" data-kind="ip">
+                      <input placeholder="IP address to unban" autocomplete="off" spellcheck="false">
+                      <button type="submit" class="secondary">Unban</button>
+                    </form>
+                  </div>
+                </div>
+                <p class="error" id="bans-error"></p>
               </div>
 
               <div class="card">

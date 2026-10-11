@@ -95,7 +95,9 @@ function renderServers() {
     shownServerId = server.id;
     $("#players-error").textContent = "";
     renderPlayers(lastStatus.get(server.id));
+    resetMapForm();
     renderConfigList();
+    renderBans(null);
     refreshPlayers();
   }
 }
@@ -186,13 +188,44 @@ function renderConfigList() {
   $("#config-list").replaceChildren(...savedConfigs(selectedId).map((c) => el("option", { value: c })));
 }
 
+// The map/mode pickers follow the server's current map and mode until someone changes them.
+let mapFormDirty = false;
+
+function syncMapForm(status) {
+  if (mapFormDirty) return;
+  const select = $("#map-select");
+  const map = status?.map;
+  if (map && ![...select.options].some((o) => o.value === map)) {
+    select.insertBefore(el("option", { value: map, textContent: map }), select.querySelector('option[value="__other"]'));
+  }
+  if (map) select.value = map;
+  $("#map-other").hidden = select.value !== "__other";
+  const mode = $("#mode-select");
+  const current = status?.gameType !== undefined && status?.gameMode !== undefined ? `${status.gameType},${status.gameMode}` : "";
+  mode.value = [...mode.options].some((o) => o.value === current) ? current : "";
+}
+
+function resetMapForm() {
+  mapFormDirty = false;
+  $("#map-other").value = "";
+  syncMapForm(lastStatus.get(selectedId));
+}
+
+$("#map-select").addEventListener("change", () => {
+  mapFormDirty = true;
+  const other = $("#map-select").value === "__other";
+  $("#map-other").hidden = !other;
+  if (other) $("#map-other").focus();
+});
+$("#map-other").addEventListener("input", () => (mapFormDirty = true));
+$("#mode-select").addEventListener("change", () => (mapFormDirty = true));
+
 $("#map-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const serverId = selectedId;
-  let map = $("#map-input").value.trim();
+  const map = ($("#map-select").value === "__other" ? $("#map-other").value : $("#map-select").value).trim();
   const mode = $("#mode-select").value;
-  if (!map && mode) map = lastStatus.get(serverId)?.map || "";
-  if (!map) return alert(mode ? "Enter a map to load with the new game mode." : "Enter a map name.");
+  if (!map) return alert("Enter a map name or Workshop ID.");
   const commands = [];
   if (mode) {
     const [type, gameMode] = mode.split(",");
@@ -200,6 +233,7 @@ $("#map-form").addEventListener("submit", async (e) => {
   }
   commands.push(/^\d+$/.test(map) ? `host_workshop_map ${map}` : `map ${map}`);
   await runCommands(commands, serverId).catch(() => {});
+  if (serverId === selectedId) resetMapForm();
   setTimeout(() => serverId === selectedId && refreshPlayers(), 5000);
 });
 
@@ -239,6 +273,7 @@ async function refreshPlayers() {
     if (serverId === selectedId) {
       $("#players-error").textContent = "";
       renderPlayers(status);
+      syncMapForm(status);
     }
   } catch (err) {
     if (serverId === selectedId) $("#players-error").textContent = err.message;
@@ -253,6 +288,7 @@ function renderPlayers(status) {
   const bots = players.length - humans;
   const parts = [];
   if (status?.map) parts.push(status.map);
+  if (status?.modeName) parts.push(status.modeName);
   if (status) parts.push(`${humans} player${humans === 1 ? "" : "s"}${bots ? ` + ${bots} bot${bots === 1 ? "" : "s"}` : ""}${status.maxPlayers ? ` / ${status.maxPlayers}` : ""}`);
   $("#players-summary").textContent = parts.length ? `· ${parts.join(" · ")}` : "";
   $("#players-empty").hidden = !status || players.length > 0;
@@ -283,6 +319,52 @@ setInterval(() => {
   if (!$("#players-auto").checked || document.visibilityState !== "visible") return;
   refreshPlayers();
 }, 10000);
+
+// --- bans ---
+
+function renderBans(bans) {
+  $("#bans-error").textContent = "";
+  const rows = (list, kind) => {
+    if (!bans) return [el("tr", {}, el("td", { className: "muted small", textContent: "Press Load bans to see them." }))];
+    if (!list.length) return [el("tr", {}, el("td", { className: "muted small", textContent: "None" }))];
+    return list.map((b) => {
+      const unban = el("button", { className: "secondary", textContent: "Unban" });
+      unban.onclick = () => unbanEntry(kind, b.id);
+      return el("tr", {}, el("td", { className: "mono", textContent: b.id }), el("td", { className: "muted small", textContent: b.duration }), el("td", { className: "actions" }, unban));
+    });
+  };
+  $("#ban-id-rows").replaceChildren(...rows(bans?.steamIds, "id"));
+  $("#ban-ip-rows").replaceChildren(...rows(bans?.ips, "ip"));
+}
+
+async function loadBans() {
+  const serverId = selectedId;
+  try {
+    const bans = await api("GET", `/api/servers/${serverId}/bans`);
+    if (serverId === selectedId) renderBans(bans);
+  } catch (err) {
+    if (serverId === selectedId) $("#bans-error").textContent = err.message;
+  }
+}
+
+async function unbanEntry(kind, value) {
+  value = value.trim().replace(/[";\s]/g, "");
+  if (!value || !confirm(`Unban ${value}?`)) return;
+  // write* saves the ban list so the unban survives a server restart.
+  const commands = kind === "ip" ? [`removeip ${value}`, "writeip"] : [`removeid ${value}`, "writeid"];
+  await runCommands(commands).catch(() => {});
+  await loadBans();
+}
+
+$("#bans-load").addEventListener("click", loadBans);
+document.querySelectorAll(".unban-form").forEach((form) => {
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const input = form.querySelector("input");
+    await unbanEntry(form.dataset.kind, input.value);
+    input.value = "";
+  });
+});
 
 // --- command log ---
 

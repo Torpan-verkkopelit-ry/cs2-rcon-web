@@ -43,8 +43,9 @@ Admins add each CS2 server with a name, IP address, port and RCON password. The 
 
 Picking a server shows:
 
-- **Quick controls**: change map (any map name, or a number for a Workshop map), optionally switching game mode (competitive, casual, wingman, deathmatch, arms race) at the same time; run a config file (`exec`); start/end warmup, restart, pause/unpause, swap or scramble teams, kick bots.
-- **Players**: who is on the server with ping and connected time, refreshed every 10 seconds, with a Kick button. It uses CS2's `status_json` and falls back to reading `status`.
+- **Quick controls**: change map (pick one, or choose "Other / Workshop…" for any map name or a Workshop ID), optionally switching game mode (competitive, casual, wingman, deathmatch, arms race) at the same time. The pickers start on the server's current map and mode; run a config file (`exec`); start/end warmup, restart, pause/unpause, swap or scramble teams, kick bots.
+- **Players**: current map and game mode, and who is on the server with ping and connected time, refreshed every 10 seconds, with a Kick button. Read from `status`, `game_type` and `game_mode`.
+- **Bans**: list SteamID and IP bans (`listid` / `listip`) and remove them (`removeid` / `removeip`, then `writeid` / `writeip` so it sticks after a restart).
 - **Console**: type any RCON command and see the reply.
 
 The **Log** tab lists every command run through the tool: when, by whom, on which server and whether it worked.
