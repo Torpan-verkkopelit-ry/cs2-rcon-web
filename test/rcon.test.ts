@@ -41,16 +41,20 @@ test("unreachable server is reported", async () => {
   await assert.rejects(conn.connect(), /Cannot connect/);
 });
 
-test("still answers when the server ignores the end marker", async () => {
-  const mock = await startMockRcon({ password: "pw", ignoreEmpty: true });
-  const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw", timeoutMs: 2000 });
+test("reads replies from a CS2-like server", async () => {
+  const long = "y".repeat(9000);
+  const mock = await startMockRcon({ password: "pw", cs2: true, handler: (c) => (c === "long" ? long : c === "quiet" ? "" : `ran: ${c}`) });
+  const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
   await conn.connect();
   assert.equal(await conn.command("status"), "ran: status");
+  assert.equal(await conn.command("long"), long);
+  assert.equal(await conn.command("quiet"), "");
+  assert.equal(await conn.command("users"), "ran: users");
   conn.close();
   await mock.close();
 });
 
-test("waits for output when the marker is answered first (CS2)", async () => {
+test("waits for output that arrives late", async () => {
   const mock = await startMockRcon({ password: "pw", delayReplyMs: 200 });
   const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
   await conn.connect();
@@ -61,7 +65,7 @@ test("waits for output when the marker is answered first (CS2)", async () => {
 });
 
 test("accepts replies that come back with id 0", async () => {
-  const mock = await startMockRcon({ password: "pw", replyId: 0, ignoreEmpty: true });
+  const mock = await startMockRcon({ password: "pw", replyId: 0 });
   const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
   await conn.connect();
   assert.equal(await conn.command("status"), "ran: status");
