@@ -106,10 +106,17 @@
                 <datalist id="config-list"></datalist>
 
                 <div class="quick-group">
+                  <span class="group-label">Warmup</span>
+                  <form id="warmup-form" class="quick-buttons">
+                    <label class="seconds" title="Warmup length in seconds"><input id="warmup-time" type="number" min="1" max="3600" value="60" required> s</label>
+                    <button type="submit" class="secondary">Start warmup</button>
+                    <button type="button" class="secondary" id="warmup-indefinite">Indefinite warmup</button>
+                    <button type="button" class="secondary" id="warmup-end">End warmup</button>
+                  </form>
+                </div>
+                <div class="quick-group">
                   <span class="group-label">Match</span>
                   <div class="quick-buttons">
-                    <button class="secondary" data-cmd="mp_warmup_start">Start warmup</button>
-                    <button class="secondary" data-cmd="mp_warmup_end">End warmup</button>
                     <button class="secondary" data-cmd="mp_pause_match">Pause</button>
                     <button class="secondary" data-cmd="mp_unpause_match">Unpause</button>
                     <button class="secondary" data-cmd="mp_restartgame 1" data-confirm="Restart the game? Scores are reset.">Restart game</button>

@@ -322,12 +322,38 @@ onBusySubmit($("#config-form"), async () => {
   $("#config-input").value = "";
 });
 
-document.querySelectorAll(".quick-buttons button").forEach((btn) => {
+document.querySelectorAll(".quick-buttons button[data-cmd]").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
     withBusy(btn, () => reported(`${btn.textContent}: done`, () => runCommand(btn.dataset.cmd))).catch(() => {});
   });
 });
+
+// mp_warmup_pausetimer 1 keeps warmup running until it is ended. It stays set on the
+// server, so timed starts and End warmup turn it off again.
+try { $("#warmup-time").value = localStorage.getItem("warmupTime") || $("#warmup-time").value; } catch {}
+
+/** Runs one warmup action at a time so two clicks can't mix their commands. */
+async function warmupAction(okMessage, commands) {
+  const others = [...document.querySelectorAll("#warmup-form button:not(.busy)")];
+  others.forEach((b) => (b.disabled = true));
+  try {
+    await reported(okMessage, () => runCommands(commands));
+  } finally {
+    others.forEach((b) => (b.disabled = false));
+  }
+}
+
+onBusySubmit($("#warmup-form"), () => {
+  const seconds = Number($("#warmup-time").value);
+  try { localStorage.setItem("warmupTime", String(seconds)); } catch {}
+  return warmupAction(`Warmup started (${seconds}s)`, ["mp_warmup_pausetimer 0", `mp_warmuptime ${seconds}`, "mp_warmup_start"]);
+});
+
+onBusyClick($("#warmup-indefinite"), () =>
+  warmupAction("Warmup started until ended", ["mp_warmup_pausetimer 1", "mp_warmup_start"]));
+
+onBusyClick($("#warmup-end"), () => warmupAction("Warmup ended", ["mp_warmup_pausetimer 0", "mp_warmup_end"]));
 
 // --- players ---
 
