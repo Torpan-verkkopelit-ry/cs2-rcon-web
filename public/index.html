@@ -119,7 +119,10 @@
                   <div class="quick-buttons">
                     <button class="secondary" data-cmd="mp_pause_match">Pause</button>
                     <button class="secondary" data-cmd="mp_unpause_match">Unpause</button>
-                    <button class="secondary" data-cmd="mp_restartgame 1" data-confirm="Restart the game? Scores are reset.">Restart game</button>
+                    <form id="restart-form" class="contents">
+                      <label class="seconds" title="Seconds until the restart"><input id="restart-time" type="number" min="1" max="60" value="5" required> s</label>
+                      <button type="submit" class="secondary">Restart game</button>
+                    </form>
                   </div>
                 </div>
                 <div class="quick-group">

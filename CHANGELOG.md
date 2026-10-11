@@ -22,6 +22,7 @@ tool behaves or how it is set up.
   controls, scrollable tables and larger tap targets (#5).
 - Bans moved to its own tab with a server picker and load automatically (#5).
 - Quick buttons are grouped into Match and Teams (#5).
+- Restart game has a delay field and waits 5 seconds by default instead of 1 (#9).
 
 ## [0.1.0] - 2026-10-11
 

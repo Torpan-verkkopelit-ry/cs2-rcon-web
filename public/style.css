@@ -137,6 +137,7 @@ button.flash-fail { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(229,
 .quick-buttons { margin-top: 0; }
 label.seconds { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); }
 label.seconds input { width: 80px; margin: 0; }
+form.contents { display: contents; }
 
 @media (max-width: 700px) {
   header { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
