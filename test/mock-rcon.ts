@@ -6,6 +6,10 @@ export interface MockOptions {
   password: string;
   /** Ignore empty commands, like a server that never answers the end marker. */
   ignoreEmpty?: boolean;
+  /** Like CS2: answer the end marker right away but send command output a little later. */
+  delayReplyMs?: number;
+  /** Reply with this id instead of the request's id. */
+  replyId?: number;
   handler?: (cmd: string) => string;
 }
 
@@ -36,10 +40,15 @@ export async function startMockRcon(opts: MockOptions) {
         }
         received.push(p.body);
         const reply = opts.handler ? opts.handler(p.body) : `ran: ${p.body}`;
-        // Split long replies over several packets, like a real server does.
-        for (let i = 0; i < reply.length || i === 0; i += 4000) {
-          socket.write(encodePacket(p.id, 0, reply.slice(i, i + 4000)));
-        }
+        const id = opts.replyId ?? p.id;
+        const send = () => {
+          // Split long replies over several packets, like a real server does.
+          for (let i = 0; i < reply.length || i === 0; i += 4000) {
+            socket.write(encodePacket(id, 0, reply.slice(i, i + 4000)));
+          }
+        };
+        if (opts.delayReplyMs) setTimeout(send, opts.delayReplyMs);
+        else send();
       }
     });
   });

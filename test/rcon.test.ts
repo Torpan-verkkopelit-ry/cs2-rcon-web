@@ -50,6 +50,35 @@ test("still answers when the server ignores the end marker", async () => {
   await mock.close();
 });
 
+test("waits for output when the marker is answered first (CS2)", async () => {
+  const mock = await startMockRcon({ password: "pw", delayReplyMs: 200 });
+  const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
+  await conn.connect();
+  assert.equal(await conn.command("status"), "ran: status");
+  assert.equal(await conn.command("mp_warmup_end"), "ran: mp_warmup_end");
+  conn.close();
+  await mock.close();
+});
+
+test("accepts replies that come back with id 0", async () => {
+  const mock = await startMockRcon({ password: "pw", replyId: 0, ignoreEmpty: true });
+  const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
+  await conn.connect();
+  assert.equal(await conn.command("status"), "ran: status");
+  assert.equal(await conn.command("users"), "ran: users");
+  conn.close();
+  await mock.close();
+});
+
+test("commands with no output finish without an error", async () => {
+  const mock = await startMockRcon({ password: "pw", handler: () => "" });
+  const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
+  await conn.connect();
+  assert.equal(await conn.command("mp_restartgame 1"), "");
+  conn.close();
+  await mock.close();
+});
+
 test("pool reconnects after the server drops the connection", async () => {
   const mock = await startMockRcon({ password: "pw" });
   const pool = new RconPool();

@@ -57,18 +57,27 @@ type Pending = {
   reject: (e: Error) => void;
   timer: NodeJS.Timeout;
   quiet?: NodeJS.Timeout;
+  grace?: NodeJS.Timeout;
 };
 
-/** If the end marker never comes, a reply counts as complete after this long without new packets. */
+/** A reply counts as complete after this long without new packets. */
 const QUIET_MS = 300;
+/** How long to keep waiting for output when the end marker is answered before the command itself. */
+const MARKER_GRACE_MS = 1500;
+
+const debug = process.env.RCON_DEBUG === "1" || process.env.RCON_DEBUG === "true";
 
 /**
  * One authenticated RCON connection. Commands are sent one at a time.
  *
  * Responses can be split over several packets, so after each command we send an empty
  * command as an end marker: once its (empty) reply arrives, everything for the real
- * command has been received. Servers that don't answer the marker are handled by treating
- * a short pause after the last packet as the end of the reply.
+ * command has been received.
+ *
+ * CS2 doesn't follow that reliably: it can answer the empty marker before the real command
+ * has run, and may not answer the marker at all. So a reply also counts as complete after a
+ * short pause following its last packet, and a marker answered early only starts a grace
+ * period in which the real output can still arrive.
  */
 export class RconConnection {
   private socket?: net.Socket;
@@ -158,6 +167,7 @@ export class RconConnection {
         reject(new RconError("Timed out waiting for response"));
       }, timeoutMs);
       this.pending = { id, markerId, chunks: [], resolve, reject, timer };
+      if (debug) console.log(`[rcon ${this.opts.host}:${this.opts.port}] send id=${id} marker=${markerId} ${JSON.stringify(cmd)}`);
       this.socket!.write(Buffer.concat([encodePacket(id, SERVERDATA_EXECCOMMAND, cmd), encodePacket(markerId, SERVERDATA_EXECCOMMAND, "")]));
     });
   }
@@ -182,6 +192,10 @@ export class RconConnection {
   }
 
   private onPacket(p: Packet) {
+    if (debug) {
+      const preview = p.body.length > 200 ? `${p.body.slice(0, 200)}...` : p.body;
+      console.log(`[rcon ${this.opts.host}:${this.opts.port}] recv id=${p.id} type=${p.type} len=${p.body.length} ${JSON.stringify(preview)}`);
+    }
     if (this.authWaiter) {
       // The server sends an empty RESPONSE_VALUE before the AUTH_RESPONSE; ignore it.
       if (p.type !== SERVERDATA_AUTH_RESPONSE) return;
@@ -199,12 +213,16 @@ export class RconConnection {
 
     const pending = this.pending;
     if (!pending || p.type !== SERVERDATA_RESPONSE_VALUE) return;
-    if (p.id === pending.id) {
+    if (p.id === pending.markerId) {
+      if (pending.chunks.some((c) => c !== "")) this.finish(pending);
+      else if (!pending.grace) pending.grace = setTimeout(() => this.finish(pending), MARKER_GRACE_MS);
+    } else if (p.id === pending.id || p.id > pending.markerId || p.id <= 0) {
+      // Commands run one at a time, so ids we didn't hand out (CS2 can reply with 0) belong to
+      // the current command. Smaller positive ids are late replies to earlier commands.
       pending.chunks.push(p.body);
       if (pending.quiet) clearTimeout(pending.quiet);
-      pending.quiet = setTimeout(() => this.finish(pending), QUIET_MS);
-    } else if (p.id === pending.markerId) {
-      this.finish(pending);
+      // An empty packet may come before the real output, so give that a little longer.
+      pending.quiet = setTimeout(() => this.finish(pending), p.body === "" && !pending.grace ? MARKER_GRACE_MS : QUIET_MS);
     }
   }
 
@@ -213,6 +231,7 @@ export class RconConnection {
     this.pending = undefined;
     clearTimeout(pending.timer);
     if (pending.quiet) clearTimeout(pending.quiet);
+    if (pending.grace) clearTimeout(pending.grace);
     pending.resolve(pending.chunks.join(""));
   }
 
@@ -228,6 +247,7 @@ export class RconConnection {
       this.pending = undefined;
       clearTimeout(p.timer);
       if (p.quiet) clearTimeout(p.quiet);
+      if (p.grace) clearTimeout(p.grace);
       // A server that drops the connection right after replying (e.g. on "quit") still answered.
       if (p.chunks.length > 0) p.resolve(p.chunks.join(""));
       else p.reject(err);

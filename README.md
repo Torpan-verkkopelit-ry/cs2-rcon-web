@@ -28,6 +28,7 @@ Settings (environment variables in `docker-compose.yml`):
 | `ADMIN_PASSWORD` | *(generated)* | Password for that account; if empty, a random one is printed to the logs |
 | `SECURE_COOKIES` | `false` | Set `true` when serving over HTTPS |
 | `TRUST_PROXY` | `false` | Set `true` when running behind a reverse proxy |
+| `RCON_DEBUG` | `false` | Set `true` to print every RCON packet sent and received to the container logs |
 
 If you ever lock yourself out, stop the container and delete the volume (`docker compose down -v`); a fresh admin account is created on the next start.
 
