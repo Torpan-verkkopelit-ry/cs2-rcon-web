@@ -23,6 +23,7 @@
       <strong>CS2 RCON</strong>
       <nav>
         <a href="#servers" data-tab="servers">Servers</a>
+        <a href="#bans" data-tab="bans">Bans</a>
         <a href="#log" data-tab="log">Log</a>
         <a href="#users" data-tab="users" id="users-link" hidden>Users</a>
         <a href="#account" data-tab="account">Account</a>
@@ -61,8 +62,8 @@
 
             <div id="server-panel" hidden>
               <div class="card">
-                <div class="panel-head">
-                  <div>
+                <div class="panel-head server-head">
+                  <div class="server-title">
                     <h2 id="server-name"></h2>
                     <span class="muted small" id="server-address"></span>
                   </div>
@@ -88,7 +89,7 @@
                   </select>
                   <input id="map-other" placeholder="Map name or Workshop ID" autocomplete="off" spellcheck="false" hidden>
                   <select id="mode-select" title="Game mode">
-                    <option value="">Keep current mode</option>
+                    <option value="">Keep mode</option>
                     <option value="0,1">Competitive</option>
                     <option value="0,0">Casual</option>
                     <option value="0,2">Wingman</option>
@@ -104,58 +105,41 @@
                 </form>
                 <datalist id="config-list"></datalist>
 
-                <div class="quick-buttons">
-                  <button class="secondary" data-cmd="mp_warmup_start">Start warmup</button>
-                  <button class="secondary" data-cmd="mp_warmup_end">End warmup</button>
-                  <button class="secondary" data-cmd="mp_restartgame 1" data-confirm="Restart the game? Scores are reset.">Restart game</button>
-                  <button class="secondary" data-cmd="mp_pause_match">Pause</button>
-                  <button class="secondary" data-cmd="mp_unpause_match">Unpause</button>
-                  <button class="secondary" data-cmd="mp_swapteams" data-confirm="Swap teams?">Swap teams</button>
-                  <button class="secondary" data-cmd="mp_scrambleteams" data-confirm="Scramble teams?">Scramble teams</button>
-                  <button class="secondary" data-cmd="bot_kick">Kick bots</button>
+                <div class="quick-group">
+                  <span class="group-label">Match</span>
+                  <div class="quick-buttons">
+                    <button class="secondary" data-cmd="mp_warmup_start">Start warmup</button>
+                    <button class="secondary" data-cmd="mp_warmup_end">End warmup</button>
+                    <button class="secondary" data-cmd="mp_pause_match">Pause</button>
+                    <button class="secondary" data-cmd="mp_unpause_match">Unpause</button>
+                    <button class="secondary" data-cmd="mp_restartgame 1" data-confirm="Restart the game? Scores are reset.">Restart game</button>
+                  </div>
+                </div>
+                <div class="quick-group">
+                  <span class="group-label">Teams</span>
+                  <div class="quick-buttons">
+                    <button class="secondary" data-cmd="mp_swapteams" data-confirm="Swap teams?">Swap teams</button>
+                    <button class="secondary" data-cmd="mp_scrambleteams" data-confirm="Scramble teams?">Scramble teams</button>
+                    <button class="secondary" data-cmd="bot_kick">Kick bots</button>
+                  </div>
                 </div>
               </div>
 
               <div class="card">
-                <div class="panel-head">
+                <div class="panel-head wrap">
                   <h3>Players <span class="muted small" id="players-summary"></span></h3>
                   <span class="spacer"></span>
                   <label class="inline small"><input type="checkbox" id="players-auto" checked> Auto-refresh</label>
                   <button class="secondary" id="players-refresh">Refresh</button>
                 </div>
-                <table class="players">
-                  <thead><tr><th>Name</th><th>IP address</th><th>Ping</th><th>Time</th><th></th></tr></thead>
-                  <tbody id="player-rows"></tbody>
-                </table>
+                <div class="table-wrap">
+                  <table class="players">
+                    <thead><tr><th>Name</th><th>IP address</th><th>Ping</th><th class="hide-sm">Time</th><th></th></tr></thead>
+                    <tbody id="player-rows"></tbody>
+                  </table>
+                </div>
                 <p class="muted small" id="players-empty" hidden>No players connected.</p>
                 <p class="error" id="players-error"></p>
-              </div>
-
-              <div class="card">
-                <div class="panel-head">
-                  <h3>Bans</h3>
-                  <span class="spacer"></span>
-                  <button class="secondary" id="bans-load">Load bans</button>
-                </div>
-                <div class="bans-grid">
-                  <div>
-                    <h4>SteamID bans</h4>
-                    <table><tbody id="ban-id-rows"></tbody></table>
-                    <form class="row unban-form" data-kind="id">
-                      <input placeholder="SteamID to unban" autocomplete="off" spellcheck="false">
-                      <button type="submit" class="secondary">Unban</button>
-                    </form>
-                  </div>
-                  <div>
-                    <h4>IP bans</h4>
-                    <table><tbody id="ban-ip-rows"></tbody></table>
-                    <form class="row unban-form" data-kind="ip">
-                      <input placeholder="IP address to unban" autocomplete="off" spellcheck="false">
-                      <button type="submit" class="secondary">Unban</button>
-                    </form>
-                  </div>
-                </div>
-                <p class="error" id="bans-error"></p>
               </div>
 
               <div class="card">
@@ -168,23 +152,56 @@
               </div>
             </div>
 
-            <div id="server-empty" class="card muted" hidden>Pick a server on the left to manage it.</div>
+            <div id="server-empty" class="card muted" hidden>Pick a server to manage it.</div>
           </section>
+        </div>
+      </div>
+
+      <div id="tab-bans" class="tab" hidden>
+        <div class="card">
+          <div class="panel-head wrap">
+            <h2>Bans</h2>
+            <span class="spacer"></span>
+            <select id="bans-server" title="Server"></select>
+            <button class="secondary" id="bans-load">Refresh</button>
+          </div>
+          <p class="muted small" id="bans-no-servers" hidden>No servers yet.</p>
+          <div class="bans-grid">
+            <div>
+              <h4>SteamID bans</h4>
+              <div class="table-wrap"><table><tbody id="ban-id-rows"></tbody></table></div>
+              <form class="row unban-form" data-kind="id">
+                <input placeholder="SteamID to unban" autocomplete="off" spellcheck="false">
+                <button type="submit" class="secondary">Unban</button>
+              </form>
+            </div>
+            <div>
+              <h4>IP bans</h4>
+              <div class="table-wrap"><table><tbody id="ban-ip-rows"></tbody></table></div>
+              <form class="row unban-form" data-kind="ip">
+                <input placeholder="IP address to unban" autocomplete="off" spellcheck="false">
+                <button type="submit" class="secondary">Unban</button>
+              </form>
+            </div>
+          </div>
+          <p class="error" id="bans-error"></p>
         </div>
       </div>
 
       <div id="tab-log" class="tab" hidden>
         <div class="card">
-          <div class="panel-head">
+          <div class="panel-head wrap">
             <h2>Command log</h2>
             <span class="spacer"></span>
             <select id="log-server"><option value="">All servers</option></select>
             <button class="secondary" id="log-refresh">Refresh</button>
           </div>
-          <table>
-            <thead><tr><th>Time</th><th>User</th><th>Server</th><th>Command</th><th></th></tr></thead>
-            <tbody id="log-rows"></tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>User</th><th>Server</th><th>Command</th><th></th></tr></thead>
+              <tbody id="log-rows"></tbody>
+            </table>
+          </div>
           <p class="muted small" id="log-empty" hidden>No commands yet.</p>
         </div>
       </div>
@@ -192,10 +209,12 @@
       <div id="tab-users" class="tab" hidden>
         <div class="card">
           <h2>Users</h2>
-          <table>
-            <thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
-            <tbody id="user-rows"></tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Username</th><th>Role</th><th class="hide-sm">Created</th><th></th></tr></thead>
+              <tbody id="user-rows"></tbody>
+            </table>
+          </div>
         </div>
         <form id="add-user-form" class="card">
           <h3>Add user</h3>
@@ -225,6 +244,8 @@
       </div>
     </main>
   </section>
+
+  <div id="toasts" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>
