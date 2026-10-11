@@ -33,9 +33,51 @@
 
     <main>
       <div id="tab-servers" class="tab">
-        <div class="card">
-          <h2>Servers</h2>
-          <p class="muted">Server management and RCON controls are coming in the next step.</p>
+        <div class="servers-layout">
+          <aside class="card server-list">
+            <h3>Servers</h3>
+            <ul id="server-list"></ul>
+            <p class="muted small" id="no-servers" hidden>No servers yet.</p>
+            <button id="add-server" class="secondary admin-only">+ Add server</button>
+          </aside>
+
+          <section class="server-main">
+            <form id="server-form" class="card" hidden>
+              <h3 id="server-form-title">Add server</h3>
+              <div class="row">
+                <input name="name" placeholder="Name (e.g. Server 1)" required maxlength="64">
+                <input name="host" placeholder="IP address or hostname" required>
+                <input name="port" type="number" placeholder="Port" value="27015" min="1" max="65535" required class="port">
+              </div>
+              <div class="row">
+                <input name="rconPassword" type="password" placeholder="RCON password" autocomplete="new-password">
+                <button type="submit">Save</button>
+                <button type="button" class="secondary" id="server-form-cancel">Cancel</button>
+              </div>
+              <p class="muted small" id="server-form-hint" hidden>Leave the password empty to keep the current one.</p>
+              <p class="error" id="server-form-error"></p>
+            </form>
+
+            <div id="server-panel" class="card" hidden>
+              <div class="panel-head">
+                <div>
+                  <h2 id="server-name"></h2>
+                  <span class="muted small" id="server-address"></span>
+                </div>
+                <span class="spacer"></span>
+                <button class="secondary admin-only" id="edit-server">Edit</button>
+                <button class="danger admin-only" id="delete-server">Delete</button>
+              </div>
+              <pre id="console-output" class="console"></pre>
+              <form id="console-form" class="row">
+                <input name="command" placeholder="Type an RCON command, e.g. status" autocomplete="off" spellcheck="false">
+                <button type="submit">Send</button>
+                <button type="button" class="secondary" id="console-clear">Clear</button>
+              </form>
+            </div>
+
+            <div id="server-empty" class="card muted" hidden>Pick a server on the left to manage it.</div>
+          </section>
         </div>
       </div>
 

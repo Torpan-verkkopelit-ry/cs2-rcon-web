@@ -56,3 +56,25 @@ td.actions button, td select { padding: 4px 8px; font-size: 14px; }
 .error { color: var(--danger); min-height: 1em; margin: 4px 0; }
 .ok { color: var(--ok); min-height: 1em; margin: 4px 0; }
 .error:empty, .ok:empty { display: none; }
+
+.servers-layout { display: grid; grid-template-columns: 220px 1fr; gap: 16px; align-items: start; }
+@media (max-width: 700px) { .servers-layout { grid-template-columns: 1fr; } }
+.server-list ul { list-style: none; margin: 0 0 12px; padding: 0; }
+.server-list li { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.server-list li:hover { background: var(--border); }
+.server-list li.active { background: var(--border); color: var(--accent); }
+.server-list li small { display: block; color: var(--muted); font-size: 12px; }
+.server-list button { width: 100%; }
+.server-main .row { margin-bottom: 8px; }
+input.port { flex: 0 0 100px; min-width: 0; }
+.panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.panel-head h2 { margin: 0; }
+.console {
+  background: #0b0d10; border: 1px solid var(--border); border-radius: 6px;
+  height: 420px; overflow: auto; padding: 10px; margin: 0 0 8px;
+  font: 13px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-word;
+}
+.console .cmd { color: var(--accent); }
+.console .err { color: var(--danger); }
+.console .time { color: var(--muted); }
+#console-form input { font-family: ui-monospace, Consolas, monospace; }

@@ -17,6 +17,25 @@ const MIGRATIONS: string[] = [
      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
      expires_at INTEGER NOT NULL
    );`,
+  `CREATE TABLE servers (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     name TEXT NOT NULL,
+     host TEXT NOT NULL,
+     port INTEGER NOT NULL,
+     rcon_password TEXT NOT NULL,
+     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+   );
+   CREATE TABLE command_log (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     at TEXT NOT NULL DEFAULT (datetime('now')),
+     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+     username TEXT NOT NULL,
+     server_id INTEGER REFERENCES servers(id) ON DELETE SET NULL,
+     server_name TEXT NOT NULL,
+     command TEXT NOT NULL,
+     ok INTEGER NOT NULL
+   );
+   CREATE INDEX command_log_server ON command_log (server_id, id);`,
 ];
 
 export function openDb(file: string): Db {

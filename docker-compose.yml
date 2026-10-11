@@ -13,6 +13,8 @@ services:
       # Set to "true" if you serve the tool over HTTPS (e.g. behind a reverse proxy).
       SECURE_COOKIES: "false"
       TRUST_PROXY: "false"
+      # Set to "true" to log raw RCON traffic (helps when a server's replies look wrong).
+      RCON_DEBUG: "false"
     volumes:
       - cs2-rcon-data:/data
 
