@@ -23,6 +23,7 @@
       <strong>CS2 RCON</strong>
       <nav>
         <a href="#servers" data-tab="servers">Servers</a>
+        <a href="#messages" data-tab="messages">Messages</a>
         <a href="#bans" data-tab="bans">Bans</a>
         <a href="#log" data-tab="log">Log</a>
         <a href="#users" data-tab="users" id="users-link" hidden>Users</a>
@@ -164,6 +165,23 @@
 
             <div id="server-empty" class="card muted" hidden>Pick a server to manage it.</div>
           </section>
+        </div>
+      </div>
+
+      <div id="tab-messages" class="tab" hidden>
+        <div class="card">
+          <div class="panel-head wrap">
+            <h2>Messages</h2>
+            <span class="spacer"></span>
+            <select id="messages-server" title="Server"></select>
+          </div>
+          <p class="muted small" id="messages-no-servers" hidden>No servers yet.</p>
+          <form id="message-form" class="row">
+            <input id="message-input" placeholder="Message to players in game" maxlength="200" autocomplete="off" required>
+            <button type="submit">Send</button>
+          </form>
+          <p class="muted small">Shown in game chat with <span class="mono">say</span>. Click a sent message to reuse it.</p>
+          <ul id="sent-messages" class="sent-messages"></ul>
         </div>
       </div>
 

@@ -126,6 +126,7 @@ function showTab() {
   if (tab === "servers") loadServers();
   if (tab === "log") loadLog();
   if (tab === "bans") showBans();
+  if (tab === "messages") showMessages();
 }
 
 // --- servers ---
@@ -429,6 +430,61 @@ setInterval(() => {
   if (!$("#players-auto").checked || document.visibilityState !== "visible") return;
   refreshPlayers();
 }, 10000);
+
+// --- messages ---
+
+const sentMessages = []; // { time, server, text }, newest first, kept until the page reloads
+
+/** Opens the Messages tab on the selected server. */
+function showMessages() {
+  const fill = () => {
+    const select = $("#messages-server");
+    select.replaceChildren(...servers.map((s) => el("option", { value: String(s.id), textContent: s.name })));
+    const id = selectedServer()?.id ?? servers[0]?.id ?? null;
+    select.value = id ? String(id) : "";
+    const none = servers.length === 0;
+    $("#messages-no-servers").hidden = !none;
+    select.hidden = none;
+    $("#message-form").hidden = none;
+    renderSentMessages();
+    if (!none) $("#message-input").focus();
+  };
+  if (servers.length) fill();
+  else api("GET", "/api/servers").then((r) => { servers = r.servers; fill(); }).catch(() => {});
+}
+
+$("#messages-server").addEventListener("change", () => {
+  selectedId = Number($("#messages-server").value);
+  try { localStorage.setItem("selectedServer", String(selectedId)); } catch {}
+});
+
+function renderSentMessages() {
+  $("#sent-messages").replaceChildren(
+    ...sentMessages.map((m) => {
+      const li = el("li", { title: "Reuse this message" },
+        el("span", { className: "meta", textContent: `${m.time} · ${m.server}` }),
+        el("span", { textContent: m.text }));
+      li.onclick = () => {
+        $("#message-input").value = m.text;
+        $("#message-input").focus();
+      };
+      return li;
+    }),
+  );
+}
+
+onBusySubmit($("#message-form"), async () => {
+  const server = servers.find((s) => s.id === Number($("#messages-server").value));
+  // Quotes keep a ; in the message from starting a new console command, so quotes are dropped.
+  const text = $("#message-input").value.replace(/"/g, "").replace(/\s+/g, " ").trim();
+  if (!server || !text) return false;
+  await reported(`Sent to ${server.name}`, () => runCommand(`say ${quoteArg(text)}`, server.id));
+  sentMessages.unshift({ time: new Date().toLocaleTimeString(), server: server.name, text });
+  if (sentMessages.length > 50) sentMessages.pop();
+  renderSentMessages();
+  $("#message-input").value = "";
+  $("#message-input").focus();
+});
 
 // --- bans ---
 
