@@ -23,6 +23,7 @@
       <strong>CS2 RCON</strong>
       <nav>
         <a href="#servers" data-tab="servers">Servers</a>
+        <a href="#log" data-tab="log">Log</a>
         <a href="#users" data-tab="users" id="users-link" hidden>Users</a>
         <a href="#account" data-tab="account">Account</a>
       </nav>
@@ -58,26 +59,97 @@
               <p class="error" id="server-form-error"></p>
             </form>
 
-            <div id="server-panel" class="card" hidden>
-              <div class="panel-head">
-                <div>
-                  <h2 id="server-name"></h2>
-                  <span class="muted small" id="server-address"></span>
+            <div id="server-panel" hidden>
+              <div class="card">
+                <div class="panel-head">
+                  <div>
+                    <h2 id="server-name"></h2>
+                    <span class="muted small" id="server-address"></span>
+                  </div>
+                  <span class="spacer"></span>
+                  <button class="secondary admin-only" id="edit-server">Edit</button>
+                  <button class="danger admin-only" id="delete-server">Delete</button>
                 </div>
-                <span class="spacer"></span>
-                <button class="secondary admin-only" id="edit-server">Edit</button>
-                <button class="danger admin-only" id="delete-server">Delete</button>
+
+                <form id="map-form" class="row controls-row">
+                  <input id="map-input" list="map-list" placeholder="Map, e.g. de_mirage (or workshop ID)" autocomplete="off" spellcheck="false">
+                  <select id="mode-select" title="Game mode">
+                    <option value="">Keep current mode</option>
+                    <option value="0,1">Competitive</option>
+                    <option value="0,0">Casual</option>
+                    <option value="0,2">Wingman</option>
+                    <option value="1,2">Deathmatch</option>
+                    <option value="1,0">Arms Race</option>
+                  </select>
+                  <button type="submit">Change map</button>
+                </form>
+                <datalist id="map-list">
+                  <option value="de_ancient"><option value="de_anubis"><option value="de_dust2"><option value="de_inferno">
+                  <option value="de_mirage"><option value="de_nuke"><option value="de_overpass"><option value="de_train">
+                  <option value="de_vertigo"><option value="cs_italy"><option value="cs_office">
+                </datalist>
+
+                <form id="config-form" class="row controls-row">
+                  <input id="config-input" list="config-list" placeholder="Config file, e.g. live.cfg" autocomplete="off" spellcheck="false">
+                  <button type="submit" class="secondary">Run config</button>
+                </form>
+                <datalist id="config-list"></datalist>
+
+                <div class="quick-buttons">
+                  <button class="secondary" data-cmd="mp_warmup_start">Start warmup</button>
+                  <button class="secondary" data-cmd="mp_warmup_end">End warmup</button>
+                  <button class="secondary" data-cmd="mp_restartgame 1" data-confirm="Restart the game? Scores are reset.">Restart game</button>
+                  <button class="secondary" data-cmd="mp_pause_match">Pause</button>
+                  <button class="secondary" data-cmd="mp_unpause_match">Unpause</button>
+                  <button class="secondary" data-cmd="mp_swapteams" data-confirm="Swap teams?">Swap teams</button>
+                  <button class="secondary" data-cmd="mp_scrambleteams" data-confirm="Scramble teams?">Scramble teams</button>
+                  <button class="secondary" data-cmd="bot_kick">Kick bots</button>
+                </div>
               </div>
-              <pre id="console-output" class="console"></pre>
-              <form id="console-form" class="row">
-                <input name="command" placeholder="Type an RCON command, e.g. status" autocomplete="off" spellcheck="false">
-                <button type="submit">Send</button>
-                <button type="button" class="secondary" id="console-clear">Clear</button>
-              </form>
+
+              <div class="card">
+                <div class="panel-head">
+                  <h3>Players <span class="muted small" id="players-summary"></span></h3>
+                  <span class="spacer"></span>
+                  <label class="inline small"><input type="checkbox" id="players-auto" checked> Auto-refresh</label>
+                  <button class="secondary" id="players-refresh">Refresh</button>
+                </div>
+                <table class="players">
+                  <thead><tr><th>Name</th><th>Ping</th><th>Time</th><th></th></tr></thead>
+                  <tbody id="player-rows"></tbody>
+                </table>
+                <p class="muted small" id="players-empty" hidden>No players connected.</p>
+                <p class="error" id="players-error"></p>
+              </div>
+
+              <div class="card">
+                <pre id="console-output" class="console"></pre>
+                <form id="console-form" class="row">
+                  <input name="command" placeholder="Type an RCON command, e.g. status" autocomplete="off" spellcheck="false">
+                  <button type="submit">Send</button>
+                  <button type="button" class="secondary" id="console-clear">Clear</button>
+                </form>
+              </div>
             </div>
 
             <div id="server-empty" class="card muted" hidden>Pick a server on the left to manage it.</div>
           </section>
+        </div>
+      </div>
+
+      <div id="tab-log" class="tab" hidden>
+        <div class="card">
+          <div class="panel-head">
+            <h2>Command log</h2>
+            <span class="spacer"></span>
+            <select id="log-server"><option value="">All servers</option></select>
+            <button class="secondary" id="log-refresh">Refresh</button>
+          </div>
+          <table>
+            <thead><tr><th>Time</th><th>User</th><th>Server</th><th>Command</th><th></th></tr></thead>
+            <tbody id="log-rows"></tbody>
+          </table>
+          <p class="muted small" id="log-empty" hidden>No commands yet.</p>
         </div>
       </div>
 

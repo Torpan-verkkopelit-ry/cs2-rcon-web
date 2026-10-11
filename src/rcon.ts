@@ -62,6 +62,8 @@ type Pending = {
 const QUIET_MS = 300;
 /** After only empty packets, wait this long for output before deciding the command printed nothing. */
 const EMPTY_WAIT_MS = 800;
+/** With no reply packet at all, the command counts as having printed nothing after this long. */
+const NO_REPLY_MS = 2000;
 
 const debug = process.env.RCON_DEBUG === "1" || process.env.RCON_DEBUG === "true";
 
@@ -156,10 +158,12 @@ export class RconConnection {
     const timeoutMs = this.opts.timeoutMs ?? 5000;
     return new Promise<string>((resolve, reject) => {
       const id = this.id();
+      // Some commands may get no reply packet at all. The server still ran them, so after a
+      // while treat silence as "no output"; a dead connection is reported by the socket instead.
       const timer = setTimeout(() => {
         this.pending = undefined;
-        reject(new RconError("Timed out waiting for response"));
-      }, timeoutMs);
+        resolve("");
+      }, Math.min(timeoutMs, NO_REPLY_MS));
       this.pending = { id, chunks: [], resolve, reject, timer };
       if (debug) console.log(`[rcon ${this.opts.host}:${this.opts.port}] send id=${id} ${JSON.stringify(cmd)}`);
       this.socket!.write(encodePacket(id, SERVERDATA_EXECCOMMAND, cmd));

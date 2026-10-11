@@ -81,3 +81,27 @@ test("editing keeps the password when left empty; wrong password gives an error"
   assert.equal((await call("DELETE", `/api/servers/${id}`, {}, admin)).status, 200);
   assert.equal((await call("POST", `/api/servers/${id}/command`, { command: "x" }, admin)).status, 404);
 });
+
+test("status endpoint falls back to text status; log lists commands", async () => {
+  const statusMock = await startMockRcon({
+    password: "pw",
+    handler: (c) => (c === "status_json" ? "Unknown command 'status_json'!" : c === "status" ? "hostname : LAN\n    2    00:10   12    0     active 786432 10.0.0.9:27005 'Aki'\n" : ""),
+  });
+  const admin = await login("admin", "adminpass1");
+  const { json } = await call("POST", "/api/servers", { name: "Status", host: "127.0.0.1", port: statusMock.port, rconPassword: "pw" }, admin);
+  for (let i = 0; i < 2; i++) {
+    const r = await call("GET", `/api/servers/${json.id}/status`, undefined, admin);
+    assert.equal(r.status, 200);
+    assert.equal(r.json.hostname, "LAN");
+    assert.deepEqual(r.json.players.map((p: any) => p.name), ["Aki"]);
+  }
+  // status_json is only tried once per server.
+  assert.deepEqual(statusMock.received, ["status_json", "status", "status"]);
+
+  await call("POST", `/api/servers/${json.id}/command`, { command: "mp_warmup_end" }, admin);
+  const log = await call("GET", `/api/log?serverId=${json.id}`, undefined, admin);
+  assert.deepEqual(log.json.entries.map((e: any) => [e.username, e.command, e.ok]), [["admin", "mp_warmup_end", 1]]);
+  assert.equal((await call("GET", "/api/log")).status, 401);
+  pool.drop(json.id);
+  await statusMock.close();
+});

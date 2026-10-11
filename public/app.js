@@ -53,6 +53,7 @@ function showTab() {
   document.querySelectorAll("header nav a").forEach((a) => a.classList.toggle("active", a.dataset.tab === tab));
   if (tab === "users") loadUsers();
   if (tab === "servers") loadServers();
+  if (tab === "log") loadLog();
 }
 
 // --- servers ---
@@ -90,7 +91,16 @@ function renderServers() {
   $("#server-address").textContent = `${server.host}:${server.port}`;
   $("#console-output").replaceChildren(...(consoleLogs.get(server.id) || []));
   scrollConsole();
+  if (shownServerId !== server.id) {
+    shownServerId = server.id;
+    $("#players-error").textContent = "";
+    renderPlayers(lastStatus.get(server.id));
+    renderConfigList();
+    refreshPlayers();
+  }
 }
+
+let shownServerId = null;
 
 function selectServer(id) {
   selectedId = id;
@@ -140,18 +150,165 @@ function scrollConsole() {
   out.scrollTop = out.scrollHeight;
 }
 
-async function runCommand(command) {
-  const server = selectedServer();
+async function runCommand(command, serverId = selectedId) {
+  const server = servers.find((s) => s.id === serverId);
   if (!server) return;
   const time = new Date().toLocaleTimeString();
   appendConsole(server.id, el("span", { className: "time", textContent: `[${time}] ` }), el("span", { className: "cmd", textContent: `> ${command}\n` }));
   try {
     const { response } = await api("POST", `/api/servers/${server.id}/command`, { command });
     appendConsole(server.id, document.createTextNode((response || "(no output)").replace(/\n?$/, "\n")));
+    return response;
   } catch (err) {
     appendConsole(server.id, el("span", { className: "err", textContent: `${err.message}\n` }));
+    throw err;
   }
 }
+
+/** Runs commands one after another, stopping at the first failure. */
+async function runCommands(commands, serverId = selectedId) {
+  for (const c of commands) await runCommand(c, serverId);
+}
+
+// --- quick controls ---
+
+const quoteArg = (s) => `"${s.replace(/"/g, "")}"`;
+
+function configsKey(id) {
+  return `configs:${id}`;
+}
+
+function savedConfigs(id) {
+  try { return JSON.parse(localStorage.getItem(configsKey(id)) || "[]"); } catch { return []; }
+}
+
+function renderConfigList() {
+  $("#config-list").replaceChildren(...savedConfigs(selectedId).map((c) => el("option", { value: c })));
+}
+
+$("#map-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const serverId = selectedId;
+  let map = $("#map-input").value.trim();
+  const mode = $("#mode-select").value;
+  if (!map && mode) map = lastStatus.get(serverId)?.map || "";
+  if (!map) return alert(mode ? "Enter a map to load with the new game mode." : "Enter a map name.");
+  const commands = [];
+  if (mode) {
+    const [type, gameMode] = mode.split(",");
+    commands.push(`game_type ${type}`, `game_mode ${gameMode}`);
+  }
+  commands.push(/^\d+$/.test(map) ? `host_workshop_map ${map}` : `map ${map}`);
+  await runCommands(commands, serverId).catch(() => {});
+  setTimeout(() => serverId === selectedId && refreshPlayers(), 5000);
+});
+
+$("#config-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const serverId = selectedId;
+  const name = $("#config-input").value.trim();
+  if (!name) return;
+  try {
+    await runCommand(`exec ${name}`, serverId);
+    const list = [name, ...savedConfigs(serverId).filter((c) => c !== name)].slice(0, 20);
+    try { localStorage.setItem(configsKey(serverId), JSON.stringify(list)); } catch {}
+    renderConfigList();
+    $("#config-input").value = "";
+  } catch {}
+});
+
+document.querySelectorAll(".quick-buttons button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
+    runCommand(btn.dataset.cmd).catch(() => {});
+  });
+});
+
+// --- players ---
+
+const lastStatus = new Map(); // server id -> last status from the server
+let playersLoading = false;
+
+async function refreshPlayers() {
+  const serverId = selectedId;
+  if (!serverId || playersLoading) return;
+  playersLoading = true;
+  try {
+    const status = await api("GET", `/api/servers/${serverId}/status`);
+    lastStatus.set(serverId, status);
+    if (serverId === selectedId) {
+      $("#players-error").textContent = "";
+      renderPlayers(status);
+    }
+  } catch (err) {
+    if (serverId === selectedId) $("#players-error").textContent = err.message;
+  } finally {
+    playersLoading = false;
+  }
+}
+
+function renderPlayers(status) {
+  const players = status?.players || [];
+  const humans = players.filter((p) => !p.bot).length;
+  const bots = players.length - humans;
+  const parts = [];
+  if (status?.map) parts.push(status.map);
+  if (status) parts.push(`${humans} player${humans === 1 ? "" : "s"}${bots ? ` + ${bots} bot${bots === 1 ? "" : "s"}` : ""}${status.maxPlayers ? ` / ${status.maxPlayers}` : ""}`);
+  $("#players-summary").textContent = parts.length ? `· ${parts.join(" · ")}` : "";
+  $("#players-empty").hidden = !status || players.length > 0;
+  $("#player-rows").replaceChildren(
+    ...players.map((p) => {
+      const name = el("td", { textContent: p.name });
+      if (p.bot) name.append(el("span", { className: "bot-tag", textContent: "BOT" }));
+      const kick = el("button", { className: "danger", textContent: "Kick" });
+      kick.onclick = async () => {
+        if (!confirm(`Kick ${p.name}?`)) return;
+        await runCommand(p.id !== undefined && p.id !== null ? `kickid ${p.id}` : `kick ${quoteArg(p.name)}`).catch(() => {});
+        refreshPlayers();
+      };
+      return el("tr", {},
+        name,
+        el("td", { className: "mono", textContent: p.bot || p.ping === undefined ? "" : String(p.ping) }),
+        el("td", { className: "mono", textContent: p.time || "" }),
+        el("td", { className: "actions" }, kick),
+      );
+    }),
+  );
+}
+
+$("#players-refresh").addEventListener("click", refreshPlayers);
+
+setInterval(() => {
+  if (!me || $("#tab-servers").hidden || $("#server-panel").hidden) return;
+  if (!$("#players-auto").checked || document.visibilityState !== "visible") return;
+  refreshPlayers();
+}, 10000);
+
+// --- command log ---
+
+async function loadLog() {
+  const select = $("#log-server");
+  const current = select.value;
+  if (!servers.length) servers = (await api("GET", "/api/servers")).servers;
+  select.replaceChildren(el("option", { value: "", textContent: "All servers" }), ...servers.map((s) => el("option", { value: String(s.id), textContent: s.name })));
+  select.value = current;
+  const { entries } = await api("GET", `/api/log${select.value ? `?serverId=${select.value}` : ""}`);
+  $("#log-empty").hidden = entries.length > 0;
+  $("#log-rows").replaceChildren(
+    ...entries.map((e) =>
+      el("tr", {},
+        el("td", { className: "mono", textContent: new Date(e.at + "Z").toLocaleString() }),
+        el("td", { textContent: e.username }),
+        el("td", { textContent: e.server_name }),
+        el("td", { className: "mono", textContent: e.command }),
+        el("td", { className: e.ok ? "muted" : "fail", textContent: e.ok ? "ok" : "failed" }),
+      ),
+    ),
+  );
+}
+
+$("#log-server").addEventListener("change", loadLog);
+$("#log-refresh").addEventListener("click", loadLog);
 
 $("#add-server").addEventListener("click", () => openServerForm(null));
 $("#edit-server").addEventListener("click", () => openServerForm(selectedServer()));
@@ -192,7 +349,7 @@ $("#console-form").addEventListener("submit", (e) => {
   if (cmdHistory[cmdHistory.length - 1] !== command) cmdHistory.push(command);
   historyPos = cmdHistory.length;
   input.value = "";
-  runCommand(command);
+  runCommand(command).catch(() => {});
 });
 
 $("#console-form input").addEventListener("keydown", (e) => {

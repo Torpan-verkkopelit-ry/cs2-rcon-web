@@ -6,8 +6,8 @@ A small web app for managing Counter-Strike 2 servers over RCON from a browser, 
 
 - [x] Login, user accounts (admin / operator) and password changes
 - [x] Add multiple CS2 servers and pick one to manage, raw RCON console
-- [ ] Quick controls: change map, game type/mode, exec configs, restart game, warmup
-- [ ] Live player list and a log of who ran which command
+- [x] Quick controls: change map, game type/mode, exec configs, restart game, warmup
+- [x] Live player list and a log of who ran which command
 
 ## Running with Docker
 
@@ -40,6 +40,14 @@ If you ever lock yourself out, stop the container and delete the volume (`docker
 ## Servers
 
 Admins add each CS2 server with a name, IP address, port and RCON password. The game server needs an RCON password, set with `rcon_password "yourpassword"` in its `server.cfg` or `+rcon_password yourpassword` on the launch line. The port is the game port, usually 27015 (TCP).
+
+Picking a server shows:
+
+- **Quick controls**: change map (any map name, or a number for a Workshop map), optionally switching game mode (competitive, casual, wingman, deathmatch, arms race) at the same time; run a config file (`exec`); start/end warmup, restart, pause/unpause, swap or scramble teams, kick bots.
+- **Players**: who is on the server with ping and connected time, refreshed every 10 seconds, with a Kick button. It uses CS2's `status_json` and falls back to reading `status`.
+- **Console**: type any RCON command and see the reply.
+
+The **Log** tab lists every command run through the tool: when, by whom, on which server and whether it worked.
 
 RCON passwords are stored in the app's database so the app can log in to the servers; they are never sent to the browser. Every command is recorded with who ran it and on which server.
 

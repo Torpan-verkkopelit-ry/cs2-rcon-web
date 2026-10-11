@@ -78,3 +78,14 @@ input.port { flex: 0 0 100px; min-width: 0; }
 .console .err { color: var(--danger); }
 .console .time { color: var(--muted); }
 #console-form input { font-family: ui-monospace, Consolas, monospace; }
+
+.controls-row select { flex: 0 0 auto; }
+.quick-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.panel-head h3 { margin: 0; }
+label.inline { display: flex; align-items: center; gap: 6px; margin: 0; }
+label.inline input { width: auto; margin: 0; }
+table.players td { padding: 6px 8px; }
+.bot-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; margin-left: 6px; }
+td.mono, .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.fail { color: var(--danger); }
+.console { height: 320px; }

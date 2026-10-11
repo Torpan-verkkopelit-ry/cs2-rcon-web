@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Db } from "../db";
 import { requireAdmin, requireUser } from "../auth";
 import { RconPool } from "../rcon";
+import { parseStatusJson, parseStatusText } from "../status";
 
 interface ServerRow {
   id: number;
@@ -28,6 +29,9 @@ function validateServer(body: any, requirePassword: boolean): string | null {
 export function serverRoutes(db: Db, pool: RconPool): Router {
   const router = Router();
   router.use(requireUser);
+
+  // Servers whose `status_json` didn't return JSON; for those we go straight to `status`.
+  const noStatusJson = new Set<number>();
 
   const findServer = (id: number) => db.prepare("SELECT * FROM servers WHERE id = ?").get(id) as ServerRow | undefined;
 
@@ -56,6 +60,7 @@ export function serverRoutes(db: Db, pool: RconPool): Router {
     db.prepare("UPDATE servers SET name = ?, host = ?, port = ? WHERE id = ?").run(body.name.trim(), body.host, body.port, id);
     if (body.rconPassword) db.prepare("UPDATE servers SET rcon_password = ? WHERE id = ?").run(body.rconPassword, id);
     pool.drop(id);
+    noStatusJson.delete(id);
     res.json({ ok: true });
   });
 
@@ -85,6 +90,23 @@ export function serverRoutes(db: Db, pool: RconPool): Router {
       res.json({ response });
     } catch (err) {
       log(false);
+      res.status(502).json({ error: (err as Error).message });
+    }
+  });
+
+  // Polled by the UI for the player list, so it isn't written to the command log.
+  router.get("/:id/status", async (req, res) => {
+    const server = findServer(Number(req.params.id));
+    if (!server) return res.status(404).json({ error: "Server not found" });
+    const opts = { host: server.host, port: server.port, password: server.rcon_password };
+    try {
+      if (!noStatusJson.has(server.id)) {
+        const parsed = parseStatusJson(await pool.command(server.id, opts, "status_json"));
+        if (parsed) return res.json(parsed);
+        noStatusJson.add(server.id);
+      }
+      res.json(parseStatusText(await pool.command(server.id, opts, "status")));
+    } catch (err) {
       res.status(502).json({ error: (err as Error).message });
     }
   });
