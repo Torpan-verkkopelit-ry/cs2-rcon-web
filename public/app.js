@@ -304,6 +304,7 @@ function renderPlayers(status) {
       };
       return el("tr", {},
         name,
+        el("td", { className: "mono", textContent: p.address ? p.address.replace(/:\d+$/, "") : "", title: p.address || "" }),
         el("td", { className: "mono", textContent: p.bot || p.ping === undefined ? "" : String(p.ping) }),
         el("td", { className: "mono", textContent: p.time || "" }),
         el("td", { className: "actions" }, kick),
