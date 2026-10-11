@@ -1,0 +1,20 @@
+services:
+  cs2-rcon-web:
+    build: .
+    container_name: cs2-rcon-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # Used only on first start, when there are no users yet.
+      # Leave ADMIN_PASSWORD empty to have one generated and printed to the logs.
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: ""
+      # Set to "true" if you serve the tool over HTTPS (e.g. behind a reverse proxy).
+      SECURE_COOKIES: "false"
+      TRUST_PROXY: "false"
+    volumes:
+      - cs2-rcon-data:/data
+
+volumes:
+  cs2-rcon-data:
