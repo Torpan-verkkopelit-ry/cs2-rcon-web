@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { modeName, parseBanList, parseCvarNumber, parseStatusJson, parseStatusText } from "../src/status";
+import { modeName, parseBanList, parseCvarNumber, parseMapGroup, parseStatusJson, parseStatusText } from "../src/status";
 
 const CS2_STATUS = `Server:  Running [10.0.0.223:27015]
 Client:  Disconnected
@@ -127,4 +127,29 @@ test("parses ban lists", () => {
   ]);
   assert.deepEqual(parseBanList("IP filter list:\n1 10.0.0.5 : permanent\n"), [{ id: "10.0.0.5", duration: "permanent" }]);
   assert.deepEqual(parseBanList("IP filter list: empty\n"), []);
+});
+
+test("parses print_mapgroup_sv output", () => {
+  const cs2 = "mg_active:\n\tde_ancient\n\tde_anubis\n\tde_dust2\n\tworkshop/3070212801/de_cache_lan\n\t3121217565\n";
+  assert.deepEqual(parseMapGroup(cs2), {
+    name: "mg_active",
+    maps: [
+      { name: "de_ancient", value: "de_ancient" },
+      { name: "de_anubis", value: "de_anubis" },
+      { name: "de_dust2", value: "de_dust2" },
+      { name: "de_cache_lan", value: "3070212801" },
+      { name: "3121217565", value: "3121217565" },
+    ],
+  });
+
+  const older = "Map group: mg_lan\n  de_mirage\n  de_mirage\n  cs_office\nUnknown command\n";
+  assert.deepEqual(parseMapGroup(older), {
+    name: "mg_lan",
+    maps: [
+      { name: "de_mirage", value: "de_mirage" },
+      { name: "cs_office", value: "cs_office" },
+    ],
+  });
+
+  assert.deepEqual(parseMapGroup("Unknown command 'print_mapgroup_sv'!\n"), { maps: [] });
 });

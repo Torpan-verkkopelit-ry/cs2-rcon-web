@@ -42,6 +42,43 @@ export function parseCvarNumber(text: string, name: string): number | undefined 
   return m ? Number(m[1]) : undefined;
 }
 
+export interface MapEntry {
+  /** Name shown in the picker. */
+  name: string;
+  /** What to change to: a map name for `map`, or a Workshop ID for `host_workshop_map`. */
+  value: string;
+}
+
+export interface MapGroup {
+  /** e.g. "mg_active", when the output names the group. */
+  name?: string;
+  maps: MapEntry[];
+}
+
+/**
+ * Parses the output of `print_mapgroup_sv`: a header naming the map group, then one map
+ * per line. Workshop maps can show as an ID or as `workshop/<id>/<name>`.
+ */
+export function parseMapGroup(text: string): MapGroup {
+  const group: MapGroup = { maps: [] };
+  const seen = new Set<string>();
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    const groupName = line.match(/\b(mg_\w+)/)?.[1];
+    if (groupName) {
+      group.name ??= groupName;
+      continue;
+    }
+    if (!/^[\w.\-/]+$/.test(line) || !/[_/]|^\d+$/.test(line)) continue;
+    const workshop = line.match(/^workshop\/(\d+)(?:\/([\w.\-]+))?/i);
+    const entry = workshop ? { name: workshop[2] || workshop[1], value: workshop[1] } : { name: line, value: line };
+    if (seen.has(entry.value)) continue;
+    seen.add(entry.value);
+    group.maps.push(entry);
+  }
+  return group;
+}
+
 export interface BanEntry {
   /** SteamID or IP address, as the server lists it. */
   id: string;

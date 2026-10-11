@@ -168,7 +168,9 @@ function renderServers() {
     shownServerId = server.id;
     $("#players-error").textContent = "";
     renderPlayers(lastStatus.get(server.id));
+    renderMapOptions();
     resetMapForm();
+    if (!serverMaps.has(server.id)) loadServerMaps(server.id).catch(() => {});
     renderConfigList();
     refreshPlayers();
   }
@@ -267,15 +269,58 @@ function syncMapForm(status) {
   if (mapFormDirty) return;
   const select = $("#map-select");
   const map = status?.map;
-  if (map && ![...select.options].some((o) => o.value === map)) {
-    select.insertBefore(el("option", { value: map, textContent: map }), select.querySelector('option[value="__other"]'));
+  // Workshop maps are listed by name but their option value is the Workshop ID.
+  let option = map && [...select.options].find((o) => o.value === map || o.textContent === map);
+  if (map && !option) {
+    option = el("option", { value: map, textContent: map });
+    select.insertBefore(option, select.querySelector('option[value="__other"]'));
   }
-  if (map) select.value = map;
+  if (option) select.value = option.value;
   $("#map-other").hidden = select.value !== "__other";
   const mode = $("#mode-select");
   const current = status?.gameType !== undefined && status?.gameMode !== undefined ? `${status.gameType},${status.gameMode}` : "";
   mode.value = [...mode.options].some((o) => o.value === current) ? current : "";
 }
+
+// Map picker options: the server's map group once loaded, else the built-in list.
+const builtInMaps = [...$("#map-select").options].filter((o) => o.value !== "__other").map((o) => ({ name: o.textContent, value: o.value }));
+const serverMaps = new Map(); // server id -> maps from print_mapgroup_sv (empty: none found)
+
+function renderMapOptions() {
+  const select = $("#map-select");
+  const current = select.value;
+  const maps = serverMaps.get(selectedId)?.length ? serverMaps.get(selectedId) : builtInMaps;
+  select.replaceChildren(
+    ...maps.map((m) => el("option", { value: m.value, textContent: m.name })),
+    el("option", { value: "__other", textContent: "Other / Workshop…" }),
+  );
+  if ([...select.options].some((o) => o.value === current)) select.value = current;
+  syncMapForm(lastStatus.get(selectedId));
+}
+
+/** Loads the server's map group into the picker. Returns the parsed group. */
+async function loadServerMaps(serverId) {
+  const group = await api("GET", `/api/servers/${serverId}/maps`);
+  serverMaps.set(serverId, group.maps);
+  if (serverId === selectedId) renderMapOptions();
+  return group;
+}
+
+onBusyClick($("#maps-reload"), async () => {
+  const serverId = selectedId;
+  let group;
+  try {
+    group = await loadServerMaps(serverId);
+  } catch (err) {
+    toast(err.message, "fail");
+    throw err;
+  }
+  if (!group.maps.length) {
+    toast("The server listed no maps; showing the built-in list.", "fail");
+    throw new Error("no maps");
+  }
+  toast(`Loaded ${group.maps.length} map${group.maps.length === 1 ? "" : "s"}${group.name ? ` from ${group.name}` : ""}`);
+});
 
 function resetMapForm() {
   mapFormDirty = false;
