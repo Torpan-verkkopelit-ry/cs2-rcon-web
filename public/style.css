@@ -135,6 +135,8 @@ button.flash-fail { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(229,
 .quick-group { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
 .group-label { flex: 0 0 52px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .quick-buttons { margin-top: 0; }
+label.seconds { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); }
+label.seconds input { width: 80px; margin: 0; }
 
 @media (max-width: 700px) {
   header { flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
@@ -166,6 +168,7 @@ button.flash-fail { border-color: var(--danger); box-shadow: 0 0 0 2px rgba(229,
   .quick-group { flex-direction: column; align-items: stretch; gap: 6px; }
   .group-label { flex: none; }
   .quick-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  label.seconds input { flex: 1; width: auto; min-width: 0; }
 
   .row input { min-width: 0; }
   #console-form input { flex: 1 1 100%; }

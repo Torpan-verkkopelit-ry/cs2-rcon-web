@@ -13,6 +13,8 @@ tool behaves or how it is set up.
 
 - Buttons show a spinner while their action runs, then flash green or red (#5).
 - Toast messages for action results and errors (#5).
+- Warmup controls: start a timed warmup with a length in seconds, or an
+  indefinite warmup that runs until End warmup (#8).
 
 ### Changed
 
