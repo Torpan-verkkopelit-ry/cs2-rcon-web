@@ -27,6 +27,77 @@ function formData(form) {
   return Object.fromEntries(new FormData(form).entries());
 }
 
+// --- feedback ---
+
+/**
+ * Shows a spinner on the button and disables it while fn runs, then flashes
+ * green or red. fn returns false when the user cancelled (no flash).
+ * Returns fn's result and rethrows its error.
+ */
+async function withBusy(btn, fn) {
+  if (!btn) return fn();
+  if (btn.classList.contains("busy")) return;
+  btn.classList.add("busy");
+  btn.disabled = true;
+  btn.setAttribute("aria-busy", "true");
+  try {
+    const result = await fn();
+    if (result !== false) flash(btn, "ok");
+    return result;
+  } catch (err) {
+    flash(btn, "fail");
+    throw err;
+  } finally {
+    btn.classList.remove("busy");
+    btn.disabled = false;
+    btn.removeAttribute("aria-busy");
+  }
+}
+
+function flash(btn, kind) {
+  btn.classList.remove("flash-ok", "flash-fail");
+  void btn.offsetWidth; // restart the animation
+  btn.classList.add(`flash-${kind}`);
+  setTimeout(() => btn.classList.remove(`flash-${kind}`), 1200);
+}
+
+/** Click handler with busy state; errors are already shown by fn or toasted here. */
+function onBusyClick(btn, fn) {
+  btn.addEventListener("click", (e) => withBusy(btn, () => fn(e)).catch(() => {}));
+}
+
+/** Submit handler with busy state on the form's submit button. */
+function onBusySubmit(form, fn) {
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const btn = e.submitter || form.querySelector('button[type="submit"]');
+    withBusy(btn, () => fn(e)).catch(() => {});
+  });
+}
+
+function toast(message, kind = "ok") {
+  const node = el("div", { className: `toast ${kind}`, textContent: message, role: kind === "fail" ? "alert" : "status" });
+  node.onclick = () => node.remove();
+  $("#toasts").append(node);
+  while ($("#toasts").children.length > 4) $("#toasts").firstElementChild.remove();
+  setTimeout(() => {
+    node.classList.add("leaving");
+    setTimeout(() => node.remove(), 300);
+  }, kind === "fail" ? 6000 : 2500);
+}
+
+/** Runs fn and toasts the outcome; rethrows so withBusy can flash red. */
+async function reported(okMessage, fn) {
+  try {
+    const result = await fn();
+    if (okMessage) toast(okMessage, "ok");
+    return result;
+  } catch (err) {
+    toast(err.message, "fail");
+    throw err;
+  }
+}
+
 // --- views ---
 
 function showLogin() {
@@ -54,6 +125,7 @@ function showTab() {
   if (tab === "users") loadUsers();
   if (tab === "servers") loadServers();
   if (tab === "log") loadLog();
+  if (tab === "bans") showBans();
 }
 
 // --- servers ---
@@ -97,7 +169,6 @@ function renderServers() {
     renderPlayers(lastStatus.get(server.id));
     resetMapForm();
     renderConfigList();
-    renderBans(null);
     refreshPlayers();
   }
 }
@@ -220,41 +291,41 @@ $("#map-select").addEventListener("change", () => {
 $("#map-other").addEventListener("input", () => (mapFormDirty = true));
 $("#mode-select").addEventListener("change", () => (mapFormDirty = true));
 
-$("#map-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+onBusySubmit($("#map-form"), async () => {
   const serverId = selectedId;
   const map = ($("#map-select").value === "__other" ? $("#map-other").value : $("#map-select").value).trim();
   const mode = $("#mode-select").value;
-  if (!map) return alert("Enter a map name or Workshop ID.");
+  if (!map) {
+    toast("Enter a map name or Workshop ID.", "fail");
+    $("#map-other").focus();
+    throw new Error("no map");
+  }
   const commands = [];
   if (mode) {
     const [type, gameMode] = mode.split(",");
     commands.push(`game_type ${type}`, `game_mode ${gameMode}`);
   }
   commands.push(/^\d+$/.test(map) ? `host_workshop_map ${map}` : `map ${map}`);
-  await runCommands(commands, serverId).catch(() => {});
+  await reported(`Changing map to ${map}`, () => runCommands(commands, serverId));
   if (serverId === selectedId) resetMapForm();
   setTimeout(() => serverId === selectedId && refreshPlayers(), 5000);
 });
 
-$("#config-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+onBusySubmit($("#config-form"), async () => {
   const serverId = selectedId;
   const name = $("#config-input").value.trim();
-  if (!name) return;
-  try {
-    await runCommand(`exec ${name}`, serverId);
-    const list = [name, ...savedConfigs(serverId).filter((c) => c !== name)].slice(0, 20);
-    try { localStorage.setItem(configsKey(serverId), JSON.stringify(list)); } catch {}
-    renderConfigList();
-    $("#config-input").value = "";
-  } catch {}
+  if (!name) return false;
+  await reported(`Ran ${name}`, () => runCommand(`exec ${name}`, serverId));
+  const list = [name, ...savedConfigs(serverId).filter((c) => c !== name)].slice(0, 20);
+  try { localStorage.setItem(configsKey(serverId), JSON.stringify(list)); } catch {}
+  renderConfigList();
+  $("#config-input").value = "";
 });
 
 document.querySelectorAll(".quick-buttons button").forEach((btn) => {
   btn.addEventListener("click", () => {
     if (btn.dataset.confirm && !confirm(btn.dataset.confirm)) return;
-    runCommand(btn.dataset.cmd).catch(() => {});
+    withBusy(btn, () => reported(`${btn.textContent}: done`, () => runCommand(btn.dataset.cmd))).catch(() => {});
   });
 });
 
@@ -263,9 +334,10 @@ document.querySelectorAll(".quick-buttons button").forEach((btn) => {
 const lastStatus = new Map(); // server id -> last status from the server
 let playersLoading = false;
 
+/** Returns false when the status request failed (the error is shown under the table). */
 async function refreshPlayers() {
   const serverId = selectedId;
-  if (!serverId || playersLoading) return;
+  if (!serverId || playersLoading) return true;
   playersLoading = true;
   try {
     const status = await api("GET", `/api/servers/${serverId}/status`);
@@ -275,8 +347,10 @@ async function refreshPlayers() {
       renderPlayers(status);
       syncMapForm(status);
     }
+    return true;
   } catch (err) {
     if (serverId === selectedId) $("#players-error").textContent = err.message;
+    return false;
   } finally {
     playersLoading = false;
   }
@@ -299,21 +373,24 @@ function renderPlayers(status) {
       const kick = el("button", { className: "danger", textContent: "Kick" });
       kick.onclick = async () => {
         if (!confirm(`Kick ${p.name}?`)) return;
-        await runCommand(p.id !== undefined && p.id !== null ? `kickid ${p.id}` : `kick ${quoteArg(p.name)}`).catch(() => {});
+        const command = p.id !== undefined && p.id !== null ? `kickid ${p.id}` : `kick ${quoteArg(p.name)}`;
+        await withBusy(kick, () => reported(`Kicked ${p.name}`, () => runCommand(command))).catch(() => {});
         refreshPlayers();
       };
       return el("tr", {},
         name,
         el("td", { className: "mono", textContent: p.address ? p.address.replace(/:\d+$/, "") : "", title: p.address || "" }),
         el("td", { className: "mono", textContent: p.bot || p.ping === undefined ? "" : String(p.ping) }),
-        el("td", { className: "mono", textContent: p.time || "" }),
+        el("td", { className: "mono hide-sm", textContent: p.time || "" }),
         el("td", { className: "actions" }, kick),
       );
     }),
   );
 }
 
-$("#players-refresh").addEventListener("click", refreshPlayers);
+onBusyClick($("#players-refresh"), async () => {
+  if (!(await refreshPlayers())) throw new Error("refresh failed");
+});
 
 setInterval(() => {
   if (!me || $("#tab-servers").hidden || $("#server-panel").hidden) return;
@@ -323,14 +400,46 @@ setInterval(() => {
 
 // --- bans ---
 
+let bansServerId = null; // server whose bans are on screen
+
+/** Opens the Bans tab on the selected server and loads its ban list. */
+function showBans() {
+  const select = $("#bans-server");
+  const fill = () => {
+    select.replaceChildren(...servers.map((s) => el("option", { value: String(s.id), textContent: s.name })));
+    const id = selectedServer()?.id ?? servers[0]?.id ?? null;
+    select.value = id ? String(id) : "";
+    const none = servers.length === 0;
+    $("#bans-no-servers").hidden = !none;
+    select.hidden = none;
+    $("#bans-load").disabled = none;
+    document.querySelector("#tab-bans .bans-grid").hidden = none;
+    return id;
+  };
+  const load = () => {
+    const id = fill();
+    if (id !== bansServerId) renderBans(null);
+    if (id) withBusy($("#bans-load"), loadBans).catch(() => {});
+  };
+  if (servers.length) load();
+  else api("GET", "/api/servers").then((r) => { servers = r.servers; load(); }).catch(() => {});
+}
+
+$("#bans-server").addEventListener("change", () => {
+  selectedId = Number($("#bans-server").value);
+  try { localStorage.setItem("selectedServer", String(selectedId)); } catch {}
+  renderBans(null);
+  withBusy($("#bans-load"), loadBans).catch(() => {});
+});
+
 function renderBans(bans) {
   $("#bans-error").textContent = "";
   const rows = (list, kind) => {
-    if (!bans) return [el("tr", {}, el("td", { className: "muted small", textContent: "Press Load bans to see them." }))];
+    if (!bans) return [el("tr", {}, el("td", { className: "muted small", textContent: "Loading…" }))];
     if (!list.length) return [el("tr", {}, el("td", { className: "muted small", textContent: "None" }))];
     return list.map((b) => {
       const unban = el("button", { className: "secondary", textContent: "Unban" });
-      unban.onclick = () => unbanEntry(kind, b.id);
+      unban.onclick = () => withBusy(unban, () => unbanEntry(kind, b.id)).catch(() => {});
       return el("tr", {}, el("td", { className: "mono", textContent: b.id }), el("td", { className: "muted small", textContent: b.duration }), el("td", { className: "actions" }, unban));
     });
   };
@@ -340,29 +449,35 @@ function renderBans(bans) {
 
 async function loadBans() {
   const serverId = selectedId;
+  if (!serverId) return;
   try {
     const bans = await api("GET", `/api/servers/${serverId}/bans`);
-    if (serverId === selectedId) renderBans(bans);
+    if (serverId === selectedId) {
+      bansServerId = serverId;
+      renderBans(bans);
+    }
   } catch (err) {
     if (serverId === selectedId) $("#bans-error").textContent = err.message;
+    throw err;
   }
 }
 
+/** Returns false when the user cancelled. */
 async function unbanEntry(kind, value) {
   value = value.trim().replace(/[";\s]/g, "");
-  if (!value || !confirm(`Unban ${value}?`)) return;
+  if (!value || !confirm(`Unban ${value}?`)) return false;
   // write* saves the ban list so the unban survives a server restart.
   const commands = kind === "ip" ? [`removeip ${value}`, "writeip"] : [`removeid ${value}`, "writeid"];
-  await runCommands(commands).catch(() => {});
-  await loadBans();
+  await reported(`Unbanned ${value}`, () => runCommands(commands));
+  await loadBans().catch(() => {});
+  return true;
 }
 
-$("#bans-load").addEventListener("click", loadBans);
+onBusyClick($("#bans-load"), loadBans);
 document.querySelectorAll(".unban-form").forEach((form) => {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  onBusySubmit(form, async () => {
     const input = form.querySelector("input");
-    await unbanEntry(form.dataset.kind, input.value);
+    if (!(await unbanEntry(form.dataset.kind, input.value))) return false;
     input.value = "";
   });
 });
@@ -391,22 +506,21 @@ async function loadLog() {
 }
 
 $("#log-server").addEventListener("change", loadLog);
-$("#log-refresh").addEventListener("click", loadLog);
+onBusyClick($("#log-refresh"), loadLog);
 
 $("#add-server").addEventListener("click", () => openServerForm(null));
 $("#edit-server").addEventListener("click", () => openServerForm(selectedServer()));
 $("#server-form-cancel").addEventListener("click", closeServerForm);
 
-$("#delete-server").addEventListener("click", async () => {
+onBusyClick($("#delete-server"), async () => {
   const server = selectedServer();
-  if (!server || !confirm(`Delete server ${server.name}?`)) return;
-  await api("DELETE", `/api/servers/${server.id}`, {}).catch((e) => alert(e.message));
+  if (!server || !confirm(`Delete server ${server.name}?`)) return false;
+  await reported(`Deleted ${server.name}`, () => api("DELETE", `/api/servers/${server.id}`, {}));
   consoleLogs.delete(server.id);
   await loadServers();
 });
 
-$("#server-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+onBusySubmit($("#server-form"), async (e) => {
   const data = formData(e.target);
   data.port = Number(data.port);
   $("#server-form-error").textContent = "";
@@ -418,9 +532,11 @@ $("#server-form").addEventListener("submit", async (e) => {
     }
     $("#server-form").hidden = true;
     editingId = null;
+    toast(`Saved ${data.name}`);
     await loadServers();
   } catch (err) {
     $("#server-form-error").textContent = err.message;
+    throw err;
   }
 });
 
@@ -454,25 +570,25 @@ async function loadUsers() {
   const rows = users.map((u) => {
     const role = el("select", {}, el("option", { value: "operator", textContent: "Operator" }), el("option", { value: "admin", textContent: "Admin" }));
     role.value = u.role;
-    role.onchange = () => updateUser(u.id, { role: role.value }).catch((e) => { alert(e.message); role.value = u.role; });
+    role.onchange = () => reported(`${u.username} is now ${role.value}`, () => updateUser(u.id, { role: role.value })).catch(() => { role.value = u.role; });
 
     const reset = el("button", { className: "secondary", textContent: "Reset password" });
     reset.onclick = async () => {
       const password = prompt(`New password for ${u.username} (min 8 characters):`);
-      if (password) await updateUser(u.id, { password }).then(() => alert("Password changed")).catch((e) => alert(e.message));
+      if (password) await withBusy(reset, () => reported(`Password changed for ${u.username}`, () => updateUser(u.id, { password }))).catch(() => {});
     };
 
     const del = el("button", { className: "danger", textContent: "Delete" });
     del.disabled = u.id === me.id;
     del.onclick = async () => {
       if (!confirm(`Delete user ${u.username}?`)) return;
-      await api("DELETE", `/api/users/${u.id}`, {}).then(loadUsers).catch((e) => alert(e.message));
+      await withBusy(del, () => reported(`Deleted ${u.username}`, () => api("DELETE", `/api/users/${u.id}`, {}))).then(loadUsers).catch(() => {});
     };
 
     return el("tr", {},
       el("td", { textContent: u.username + (u.id === me.id ? " (you)" : "") }),
       el("td", {}, role),
-      el("td", { textContent: new Date(u.created_at + "Z").toLocaleString() }),
+      el("td", { className: "hide-sm", textContent: new Date(u.created_at + "Z").toLocaleString() }),
       el("td", { className: "actions" }, reset, " ", del),
     );
   });
@@ -487,8 +603,7 @@ async function updateUser(id, changes) {
 
 // --- events ---
 
-$("#login-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+onBusySubmit($("#login-form"), async (e) => {
   $("#login-error").textContent = "";
   try {
     await api("POST", "/api/auth/login", formData(e.target));
@@ -496,28 +611,31 @@ $("#login-form").addEventListener("submit", async (e) => {
     await showMain();
   } catch (err) {
     $("#login-error").textContent = err.message;
+    throw err;
   }
 });
 
-$("#logout").addEventListener("click", async () => {
+onBusyClick($("#logout"), async () => {
   await api("POST", "/api/auth/logout", {}).catch(() => {});
   showLogin();
+  return false;
 });
 
-$("#add-user-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+onBusySubmit($("#add-user-form"), async (e) => {
   $("#add-user-error").textContent = "";
   try {
+    const { username } = formData(e.target);
     await api("POST", "/api/users", formData(e.target));
     e.target.reset();
+    toast(`Added ${username}`);
     await loadUsers();
   } catch (err) {
     $("#add-user-error").textContent = err.message;
+    throw err;
   }
 });
 
-$("#password-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
+onBusySubmit($("#password-form"), async (e) => {
   $("#password-error").textContent = "";
   $("#password-ok").textContent = "";
   try {
@@ -526,6 +644,7 @@ $("#password-form").addEventListener("submit", async (e) => {
     $("#password-ok").textContent = "Password changed.";
   } catch (err) {
     $("#password-error").textContent = err.message;
+    throw err;
   }
 });
 
