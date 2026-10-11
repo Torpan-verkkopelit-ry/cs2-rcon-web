@@ -91,6 +91,10 @@ td.mono, .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px
 .console { height: 320px; }
 #map-select { flex: 1; min-width: 160px; }
 #map-other { flex: 1; min-width: 160px; }
+.sent-messages { list-style: none; margin: 8px 0 0; padding: 0; }
+.sent-messages li { display: flex; align-items: baseline; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; overflow-wrap: anywhere; }
+.sent-messages li:hover { background: var(--border); }
+.sent-messages .meta { flex: 0 0 auto; color: var(--muted); font-size: 13px; }
 .bans-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 700px) { .bans-grid { grid-template-columns: 1fr; } }
 .bans-grid h4 { margin: 0 0 6px; color: var(--muted); font-weight: 500; font-size: 14px; }
@@ -176,7 +180,9 @@ form.contents { display: contents; }
   #console-form button { flex: 1; }
   .console { height: 260px; }
   #add-user-form .row > * { flex: 1 1 100%; }
-  #tab-bans .spacer, #tab-log .spacer { display: none; }
+  #tab-bans .spacer, #tab-log .spacer, #tab-messages .spacer { display: none; }
+  #message-input { flex: 1 1 100%; }
+  #message-form button { flex: 1; }
   .panel-head.wrap select { flex: 1 1 0; min-width: 0; }
   #toasts { left: 12px; right: 12px; bottom: 12px; align-items: stretch; }
   .toast { max-width: none; }
