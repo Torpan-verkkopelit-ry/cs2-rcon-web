@@ -15,7 +15,8 @@ tool behaves or how it is set up.
 - Toast messages for action results and errors (#5).
 - Warmup controls: start a timed warmup with a length in seconds, or an
   indefinite warmup that runs until End warmup (#8).
-- Messages tab for sending chat messages to players in game with `say` (#10).
+- Messages tab for sending chat messages to players in game with `say`, with
+  color buttons that insert tags like `[RED]` and a colored preview (#10).
 
 ### Changed
 

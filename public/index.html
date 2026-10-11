@@ -180,7 +180,9 @@
             <input id="message-input" placeholder="Message to players in game" maxlength="200" autocomplete="off" required>
             <button type="submit">Send</button>
           </form>
-          <p class="muted small">Shown in game chat with <span class="mono">say</span>. Click a sent message to reuse it.</p>
+          <div class="message-colors" id="message-colors"><span class="group-label">Color</span></div>
+          <p class="message-preview" id="message-preview" hidden></p>
+          <p class="muted small">Shown in game chat with <span class="mono">say</span>. A color tag like <span class="mono">[RED]</span> colors the text after it. Click a sent message to reuse it.</p>
           <ul id="sent-messages" class="sent-messages"></ul>
         </div>
       </div>

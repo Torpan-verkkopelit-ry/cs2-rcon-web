@@ -433,6 +433,56 @@ setInterval(() => {
 
 // --- messages ---
 
+// Chat color tags the server turns into colors; the text after a tag takes its color.
+const chatColors = {
+  WHITE: "#ffffff",
+  RED: "#ff4040",
+  GREEN: "#40ff40",
+  BLUE: "#4b69ff",
+  YELLOW: "#ffff40",
+  ORANGE: "#ffa500",
+  PURPLE: "#b06cff",
+  GREY: "#b0c3d9",
+};
+
+/** Message text as nodes, colored like game chat. Unknown tags stay as text. */
+function colorizeMessage(text) {
+  const nodes = [];
+  let color = null;
+  for (const [i, part] of text.split(/\[([A-Z]+)\]/).entries()) {
+    if (i % 2 === 1) {
+      if (chatColors[part]) color = chatColors[part];
+      else nodes.push(document.createTextNode(`[${part}]`));
+    } else if (part) {
+      nodes.push(color ? el("span", { textContent: part, style: `color: ${color}` }) : document.createTextNode(part));
+    }
+  }
+  return nodes;
+}
+
+function updateMessagePreview() {
+  const text = $("#message-input").value;
+  const preview = $("#message-preview");
+  preview.hidden = !/\[[A-Z]+\]/.test(text);
+  preview.replaceChildren(...colorizeMessage(text));
+}
+
+for (const [name, color] of Object.entries(chatColors)) {
+  const btn = el("button", { type: "button", textContent: name[0] + name.slice(1).toLowerCase(), title: `Insert [${name}]`, style: `color: ${color}` });
+  btn.onclick = () => {
+    const input = $("#message-input");
+    const tag = `[${name}]`;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    input.setRangeText(tag, start, end, "end");
+    input.focus();
+    updateMessagePreview();
+  };
+  $("#message-colors").append(btn);
+}
+
+$("#message-input").addEventListener("input", updateMessagePreview);
+
 const sentMessages = []; // { time, server, text }, newest first, kept until the page reloads
 
 /** Opens the Messages tab on the selected server. */
@@ -463,10 +513,11 @@ function renderSentMessages() {
     ...sentMessages.map((m) => {
       const li = el("li", { title: "Reuse this message" },
         el("span", { className: "meta", textContent: `${m.time} · ${m.server}` }),
-        el("span", { textContent: m.text }));
+        el("span", {}, ...colorizeMessage(m.text)));
       li.onclick = () => {
         $("#message-input").value = m.text;
         $("#message-input").focus();
+        updateMessagePreview();
       };
       return li;
     }),
@@ -484,6 +535,7 @@ onBusySubmit($("#message-form"), async () => {
   renderSentMessages();
   $("#message-input").value = "";
   $("#message-input").focus();
+  updateMessagePreview();
 });
 
 // --- bans ---
