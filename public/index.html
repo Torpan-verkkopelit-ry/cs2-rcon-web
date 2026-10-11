@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CS2 RCON</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section id="login-view" hidden>
+    <form id="login-form" class="card narrow">
+      <h1>CS2 RCON</h1>
+      <label>Username <input name="username" autocomplete="username" required autofocus></label>
+      <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+      <p class="error" id="login-error"></p>
+      <button type="submit">Log in</button>
+    </form>
+  </section>
+
+  <section id="main-view" hidden>
+    <header>
+      <strong>CS2 RCON</strong>
+      <nav>
+        <a href="#servers" data-tab="servers">Servers</a>
+        <a href="#users" data-tab="users" id="users-link" hidden>Users</a>
+        <a href="#account" data-tab="account">Account</a>
+      </nav>
+      <span class="spacer"></span>
+      <span id="whoami"></span>
+      <button id="logout" class="secondary">Log out</button>
+    </header>
+
+    <main>
+      <div id="tab-servers" class="tab">
+        <div class="card">
+          <h2>Servers</h2>
+          <p class="muted">Server management and RCON controls are coming in the next step.</p>
+        </div>
+      </div>
+
+      <div id="tab-users" class="tab" hidden>
+        <div class="card">
+          <h2>Users</h2>
+          <table>
+            <thead><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr></thead>
+            <tbody id="user-rows"></tbody>
+          </table>
+        </div>
+        <form id="add-user-form" class="card">
+          <h3>Add user</h3>
+          <div class="row">
+            <input name="username" placeholder="Username" required>
+            <input name="password" type="password" placeholder="Password (min 8)" required minlength="8" autocomplete="new-password">
+            <select name="role">
+              <option value="operator">Operator</option>
+              <option value="admin">Admin</option>
+            </select>
+            <button type="submit">Add</button>
+          </div>
+          <p class="error" id="add-user-error"></p>
+        </form>
+        <p class="muted small">Operators can manage game servers. Admins can also manage users.</p>
+      </div>
+
+      <div id="tab-account" class="tab" hidden>
+        <form id="password-form" class="card narrow">
+          <h2>Change password</h2>
+          <label>Current password <input name="currentPassword" type="password" autocomplete="current-password" required></label>
+          <label>New password <input name="newPassword" type="password" autocomplete="new-password" minlength="8" required></label>
+          <p class="error" id="password-error"></p>
+          <p class="ok" id="password-ok"></p>
+          <button type="submit">Change password</button>
+        </form>
+      </div>
+    </main>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
