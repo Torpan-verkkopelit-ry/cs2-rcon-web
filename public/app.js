@@ -355,6 +355,12 @@ onBusyClick($("#warmup-indefinite"), () =>
 
 onBusyClick($("#warmup-end"), () => warmupAction("Warmup ended", ["mp_warmup_pausetimer 0", "mp_warmup_end"]));
 
+onBusySubmit($("#restart-form"), async () => {
+  const seconds = Number($("#restart-time").value);
+  if (!confirm(`Restart the game in ${seconds}s? Scores are reset.`)) return false;
+  await reported(`Game restarts in ${seconds}s`, () => runCommand(`mp_restartgame ${seconds}`));
+});
+
 // --- players ---
 
 const lastStatus = new Map(); // server id -> last status from the server
