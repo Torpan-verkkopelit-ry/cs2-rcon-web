@@ -83,6 +83,16 @@ test("commands with no output finish without an error", async () => {
   await mock.close();
 });
 
+test("a command that gets no reply at all resolves empty", async () => {
+  const mock = await startMockRcon({ password: "pw", silent: ["mp_warmup_end"] });
+  const conn = new RconConnection({ host: "127.0.0.1", port: mock.port, password: "pw" });
+  await conn.connect();
+  assert.equal(await conn.command("mp_warmup_end"), "");
+  assert.equal(await conn.command("status"), "ran: status");
+  conn.close();
+  await mock.close();
+});
+
 test("pool reconnects after the server drops the connection", async () => {
   const mock = await startMockRcon({ password: "pw" });
   const pool = new RconPool();

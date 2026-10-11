@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Db } from "../db";
 import { requireAdmin, requireUser } from "../auth";
 import { RconPool } from "../rcon";
+import { modeName, parseBanList, parseCvarNumber, parseStatusJson, parseStatusText } from "../status";
 
 interface ServerRow {
   id: number;
@@ -28,6 +29,9 @@ function validateServer(body: any, requirePassword: boolean): string | null {
 export function serverRoutes(db: Db, pool: RconPool): Router {
   const router = Router();
   router.use(requireUser);
+
+  // Servers whose `status_json` didn't return JSON; for those we only use `status`.
+  const noStatusJson = new Set<number>();
 
   const findServer = (id: number) => db.prepare("SELECT * FROM servers WHERE id = ?").get(id) as ServerRow | undefined;
 
@@ -56,6 +60,7 @@ export function serverRoutes(db: Db, pool: RconPool): Router {
     db.prepare("UPDATE servers SET name = ?, host = ?, port = ? WHERE id = ?").run(body.name.trim(), body.host, body.port, id);
     if (body.rconPassword) db.prepare("UPDATE servers SET rcon_password = ? WHERE id = ?").run(body.rconPassword, id);
     pool.drop(id);
+    noStatusJson.delete(id);
     res.json({ ok: true });
   });
 
@@ -85,6 +90,48 @@ export function serverRoutes(db: Db, pool: RconPool): Router {
       res.json({ response });
     } catch (err) {
       log(false);
+      res.status(502).json({ error: (err as Error).message });
+    }
+  });
+
+  // Polled by the UI for the player list, so it isn't written to the command log.
+  // Players come from `status`, whose format is known from real CS2 servers; `status_json`
+  // only fills in server details that `status` didn't show (it can leave out human players).
+  router.get("/:id/status", async (req, res) => {
+    const server = findServer(Number(req.params.id));
+    if (!server) return res.status(404).json({ error: "Server not found" });
+    const opts = { host: server.host, port: server.port, password: server.rcon_password };
+    const run = (cmd: string) => pool.command(server.id, opts, cmd);
+    try {
+      const status = parseStatusText(await run("status"));
+      if ((!status.map || !status.hostname || !status.maxPlayers) && !noStatusJson.has(server.id)) {
+        const json = parseStatusJson(await run("status_json"));
+        if (json) {
+          status.map ??= json.map;
+          status.hostname ??= json.hostname;
+          status.maxPlayers ??= json.maxPlayers;
+        } else {
+          noStatusJson.add(server.id);
+        }
+      }
+      status.gameType = parseCvarNumber(await run("game_type"), "game_type");
+      status.gameMode = parseCvarNumber(await run("game_mode"), "game_mode");
+      status.modeName = modeName(status.gameType, status.gameMode);
+      res.json(status);
+    } catch (err) {
+      res.status(502).json({ error: (err as Error).message });
+    }
+  });
+
+  router.get("/:id/bans", async (req, res) => {
+    const server = findServer(Number(req.params.id));
+    if (!server) return res.status(404).json({ error: "Server not found" });
+    const opts = { host: server.host, port: server.port, password: server.rcon_password };
+    try {
+      const steamIds = parseBanList(await pool.command(server.id, opts, "listid"));
+      const ips = parseBanList(await pool.command(server.id, opts, "listip"));
+      res.json({ steamIds, ips });
+    } catch (err) {
       res.status(502).json({ error: (err as Error).message });
     }
   });

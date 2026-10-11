@@ -17,6 +17,8 @@ export interface MockOptions {
    */
   cs2?: boolean;
   handler?: (cmd: string) => string;
+  /** Commands that get no reply packet at all. */
+  silent?: string[];
 }
 
 /** A tiny Source RCON server for tests. Records every command it receives. */
@@ -46,6 +48,7 @@ export async function startMockRcon(opts: MockOptions) {
           continue;
         }
         received.push(p.body);
+        if (opts.silent?.includes(p.body)) continue;
         const reply = opts.handler ? opts.handler(p.body) : `ran: ${p.body}`;
         const id = opts.replyId ?? (opts.cs2 ? lastId : p.id);
         const send = () => {
