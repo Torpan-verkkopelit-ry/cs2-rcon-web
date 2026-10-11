@@ -38,7 +38,7 @@ If you ever lock yourself out, stop the container and delete the volume (`docker
 
 ## Servers
 
-Admins add each CS2 server with a name, IP address, port and RCON password. The game server needs RCON enabled, for example by launching it with `-usercon +rcon_password yourpassword` (the port is the game port, usually 27015, TCP).
+Admins add each CS2 server with a name, IP address, port and RCON password. The game server needs an RCON password, set with `rcon_password "yourpassword"` in its `server.cfg` or `+rcon_password yourpassword` on the launch line. The port is the game port, usually 27015 (TCP).
 
 RCON passwords are stored in the app's database so the app can log in to the servers; they are never sent to the browser. Every command is recorded with who ran it and on which server.
 
