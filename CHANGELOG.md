@@ -9,6 +9,18 @@ tool behaves or how it is set up.
 
 ## [Unreleased]
 
+### Added
+
+- Buttons show a spinner while their action runs, then flash green or red (#5).
+- Toast messages for action results and errors (#5).
+
+### Changed
+
+- Mobile-friendly layout: wrapping header and navigation, stacked server
+  controls, scrollable tables and larger tap targets (#5).
+- Bans moved to its own tab with a server picker and load automatically (#5).
+- Quick buttons are grouped into Match and Teams (#5).
+
 ## [0.1.0] - 2026-10-11
 
 First version, used for setting up the tool at the LAN.
