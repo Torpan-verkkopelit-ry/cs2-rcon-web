@@ -16,6 +16,9 @@ tool behaves or how it is set up.
 - Warmup controls: start a timed warmup with a length in seconds, or an
   indefinite warmup that runs until End warmup (#8).
 - Messages tab for sending chat messages to players in game with `say` (#10).
+- The map picker lists the maps in the server's map group (`print_mapgroup_sv`),
+  loaded when a server is opened and with a Reload maps button; the built-in
+  list is used when the server lists none (#11).
 
 ### Changed
 

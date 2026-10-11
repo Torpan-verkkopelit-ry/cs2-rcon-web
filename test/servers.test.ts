@@ -93,6 +93,7 @@ test("status endpoint falls back to text status; log lists commands", async () =
         game_mode: '"game_mode" = "2" ( def. "0" ) game replicated',
         listid: "ID filter list: 1 entry\n1 [U:1:12345] : permanent\n",
         listip: "IP filter list: empty\n",
+        print_mapgroup_sv: "mg_active:\n\tde_nuke\n\tde_train\n",
       })[c] ?? "",
   });
   const admin = await login("admin", "adminpass1");
@@ -111,6 +112,9 @@ test("status endpoint falls back to text status; log lists commands", async () =
 
   const bans = await call("GET", `/api/servers/${json.id}/bans`, undefined, admin);
   assert.deepEqual(bans.json, { steamIds: [{ id: "[U:1:12345]", duration: "permanent" }], ips: [] });
+
+  const maps = await call("GET", `/api/servers/${json.id}/maps`, undefined, admin);
+  assert.deepEqual(maps.json, { name: "mg_active", maps: [{ name: "de_nuke", value: "de_nuke" }, { name: "de_train", value: "de_train" }] });
 
   await call("POST", `/api/servers/${json.id}/command`, { command: "mp_warmup_end" }, admin);
   const log = await call("GET", `/api/log?serverId=${json.id}`, undefined, admin);

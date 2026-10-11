@@ -2,7 +2,7 @@ import { Router } from "express";
 import type { Db } from "../db";
 import { requireAdmin, requireUser } from "../auth";
 import { RconPool } from "../rcon";
-import { modeName, parseBanList, parseCvarNumber, parseStatusJson, parseStatusText } from "../status";
+import { modeName, parseBanList, parseCvarNumber, parseMapGroup, parseStatusJson, parseStatusText } from "../status";
 
 interface ServerRow {
   id: number;
@@ -118,6 +118,18 @@ export function serverRoutes(db: Db, pool: RconPool): Router {
       status.gameMode = parseCvarNumber(await run("game_mode"), "game_mode");
       status.modeName = modeName(status.gameType, status.gameMode);
       res.json(status);
+    } catch (err) {
+      res.status(502).json({ error: (err as Error).message });
+    }
+  });
+
+  // Maps in the server's current map group, for the map picker. Not written to the command log.
+  router.get("/:id/maps", async (req, res) => {
+    const server = findServer(Number(req.params.id));
+    if (!server) return res.status(404).json({ error: "Server not found" });
+    const opts = { host: server.host, port: server.port, password: server.rcon_password };
+    try {
+      res.json(parseMapGroup(await pool.command(server.id, opts, "print_mapgroup_sv")));
     } catch (err) {
       res.status(502).json({ error: (err as Error).message });
     }
