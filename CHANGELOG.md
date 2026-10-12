@@ -7,7 +7,7 @@ and this project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 Add an entry under **Unreleased** in every pull request that changes how the
 tool behaves or how it is set up.
 
-## [Unreleased]
+## [0.10.0] - 2026-10-12
 
 ### Added
 
