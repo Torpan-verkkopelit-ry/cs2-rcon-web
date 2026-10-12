@@ -19,6 +19,8 @@ tool behaves or how it is set up.
 - The map picker lists the maps in the server's map group (`print_mapgroup_sv`),
   loaded when a server is opened and with a Reload maps button; the built-in
   list is used when the server lists none (#11).
+- Color buttons on the Messages tab insert tags like `[RED]`, shown as a colored
+  preview and sent to the game as chat color characters (#12).
 
 ### Changed
 

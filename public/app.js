@@ -478,6 +478,65 @@ setInterval(() => {
 
 // --- messages ---
 
+// Color tags shown in the message box. Game chat colors come from control characters,
+// so tags are swapped for their character when the message is sent; the text after
+// one takes its color.
+const chatColors = {
+  WHITE: { code: "\x01", css: "#ffffff" },
+  RED: { code: "\x07", css: "#ff4040" },
+  GREEN: { code: "\x04", css: "#40ff40" },
+  BLUE: { code: "\x0B", css: "#4b69ff" },
+  YELLOW: { code: "\x09", css: "#ffff40" },
+  ORANGE: { code: "\x10", css: "#ffa500" },
+  PURPLE: { code: "\x0E", css: "#b06cff" },
+  GREY: { code: "\x08", css: "#b0c3d9" },
+};
+
+/** Replaces known color tags with chat color characters. */
+function chatColorCodes(text) {
+  const coded = text.replace(/\[([A-Z]+)\]/g, (tag, name) => chatColors[name]?.code ?? tag);
+  // Chat plugins lead with a space because a color character at the very start is ignored.
+  return /^[\x01-\x10]/.test(coded) ? ` ${coded}` : coded;
+}
+
+/** Message text as nodes, colored like game chat. Unknown tags stay as text. */
+function colorizeMessage(text) {
+  const nodes = [];
+  let color = null;
+  for (const [i, part] of text.split(/\[([A-Z]+)\]/).entries()) {
+    if (i % 2 === 1) {
+      if (chatColors[part]) color = chatColors[part].css;
+      else nodes.push(document.createTextNode(`[${part}]`));
+    } else if (part) {
+      nodes.push(color ? el("span", { textContent: part, style: `color: ${color}` }) : document.createTextNode(part));
+    }
+  }
+  return nodes;
+}
+
+function updateMessagePreview() {
+  const text = $("#message-input").value;
+  const preview = $("#message-preview");
+  preview.hidden = !/\[[A-Z]+\]/.test(text);
+  preview.replaceChildren(...colorizeMessage(text));
+}
+
+for (const [name, { css }] of Object.entries(chatColors)) {
+  const btn = el("button", { type: "button", textContent: name[0] + name.slice(1).toLowerCase(), title: `Insert [${name}]`, style: `color: ${css}` });
+  btn.onclick = () => {
+    const input = $("#message-input");
+    const tag = `[${name}]`;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? start;
+    input.setRangeText(tag, start, end, "end");
+    input.focus();
+    updateMessagePreview();
+  };
+  $("#message-colors").append(btn);
+}
+
+$("#message-input").addEventListener("input", updateMessagePreview);
+
 const sentMessages = []; // { time, server, text }, newest first, kept until the page reloads
 
 /** Opens the Messages tab on the selected server. */
@@ -508,10 +567,11 @@ function renderSentMessages() {
     ...sentMessages.map((m) => {
       const li = el("li", { title: "Reuse this message" },
         el("span", { className: "meta", textContent: `${m.time} · ${m.server}` }),
-        el("span", { textContent: m.text }));
+        el("span", {}, ...colorizeMessage(m.text)));
       li.onclick = () => {
         $("#message-input").value = m.text;
         $("#message-input").focus();
+        updateMessagePreview();
       };
       return li;
     }),
@@ -523,12 +583,13 @@ onBusySubmit($("#message-form"), async () => {
   // Quotes keep a ; in the message from starting a new console command, so quotes are dropped.
   const text = $("#message-input").value.replace(/"/g, "").replace(/\s+/g, " ").trim();
   if (!server || !text) return false;
-  await reported(`Sent to ${server.name}`, () => runCommand(`say ${quoteArg(text)}`, server.id));
+  await reported(`Sent to ${server.name}`, () => runCommand(`say ${quoteArg(chatColorCodes(text))}`, server.id));
   sentMessages.unshift({ time: new Date().toLocaleTimeString(), server: server.name, text });
   if (sentMessages.length > 50) sentMessages.pop();
   renderSentMessages();
   $("#message-input").value = "";
   $("#message-input").focus();
+  updateMessagePreview();
 });
 
 // --- bans ---

@@ -95,6 +95,9 @@ td.mono, .mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px
 .sent-messages li { display: flex; align-items: baseline; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; overflow-wrap: anywhere; }
 .sent-messages li:hover { background: var(--border); }
 .sent-messages .meta { flex: 0 0 auto; color: var(--muted); font-size: 13px; }
+.message-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 8px; }
+.message-colors button { padding: 4px 10px; font-size: 13px; background: transparent; border-color: var(--border); font-weight: 600; }
+.message-preview { margin: 0 0 8px; padding: 6px 10px; border: 1px dashed var(--border); border-radius: 6px; overflow-wrap: anywhere; }
 .bans-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 700px) { .bans-grid { grid-template-columns: 1fr; } }
 .bans-grid h4 { margin: 0 0 6px; color: var(--muted); font-weight: 500; font-size: 14px; }
