@@ -2,6 +2,8 @@
 
 A small web app for managing Counter-Strike 2 servers over RCON from a browser. It runs in Docker on any machine on the LAN, and admins log in from their own laptops or phones.
 
+![CS2 RCON Web showing a server with its controls, player list and RCON console](docs/screenshot.png)
+
 - Several CS2 servers in one place: pick one and manage it
 - Change map and game mode, run configs, start/end warmup, restart, pause, swap/scramble teams, kick bots
 - Live player list with IP, ping and connected time, and a Kick button
