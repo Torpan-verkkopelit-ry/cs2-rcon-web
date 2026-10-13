@@ -43,6 +43,8 @@ docker build -t cs2-rcon-web .
 ```
 
 CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm test` and `docker build`.
+It skips changes that only touch docs (`*.md`, `docs/`, `LICENSE`,
+`.gitignore`, `docker-compose.yml`); see `paths-ignore` there.
 Run `npm test` before every push; it is also the type check.
 
 ## Code conventions
