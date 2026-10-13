@@ -2,7 +2,20 @@ name: CI
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      # Docs-only changes don't affect the build or tests, so skip CI for them.
+      - "**.md"
+      - "docs/**"
+      - "LICENSE*"
+      - ".gitignore"
+      - "docker-compose.yml"
   pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "LICENSE*"
+      - ".gitignore"
+      - "docker-compose.yml"
 jobs:
   test:
     runs-on: ubuntu-latest
