@@ -140,3 +140,7 @@ npm run dev     # builds and starts on http://localhost:8080, data in ./data
 ```
 
 The tests use a mock RCON server (`test/mock-rcon.ts`) that has a mode imitating a real CS2 server's replies.
+
+## License
+
+[MIT](LICENSE) © Torpan verkkopelit ry. You can use, change and share it freely, as long as the license text stays with it.
