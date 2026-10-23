@@ -9,6 +9,11 @@ tool behaves or how it is set up.
 
 ## [Unreleased]
 
+### Security
+
+- The Docker image now uses Node.js 22.23.4, which fixes the Brotli flaw
+  CVE-2026-111497 (Node2Shell). Rebuild with `docker compose up -d --build` (#21).
+
 ## [0.10.0] - 2026-10-12
 
 ### Added
