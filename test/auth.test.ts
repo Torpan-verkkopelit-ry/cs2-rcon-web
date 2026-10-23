@@ -53,6 +53,16 @@ test("unauthenticated requests are rejected", async () => {
   assert.equal((await call("GET", "/api/users")).status, 401);
 });
 
+test("Brotli-encoded request bodies are refused", async () => {
+  // Express 4 never decompresses Brotli bodies; keep it that way (CVE-2026-111497).
+  const res = await fetch(base + "/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Content-Encoding": "br" },
+    body: Buffer.from([0x0b, 0x02, 0x80, 0x7b, 0x7d, 0x03]),
+  });
+  assert.equal(res.status, 415);
+});
+
 test("wrong password is rejected", async () => {
   const r = await call("POST", "/api/auth/login", { username: "admin", password: "nope" });
   assert.equal(r.status, 401);
