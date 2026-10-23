@@ -131,7 +131,7 @@ To serve the UI on port 80 instead of 8080, change `"8080:8080"` to `"80:8080"` 
 
 ## Development
 
-Requires Node.js 22.13 or newer (uses the built-in `node:sqlite`).
+Requires Node.js 22.13 or newer (uses the built-in `node:sqlite`). Use 22.23.4 or newer, which fixes the Brotli flaw CVE-2026-111497 (Node2Shell).
 
 ```sh
 npm install
